@@ -803,6 +803,7 @@ impl TryFrom<&UserMessage> for Message {
             "ServerName" => server_name.map(Self::ServerName).parse(i),
             "SetFOV" => set_fov.map(Self::SetFOV).parse(i),
             "Spectator" => spectator.map(Self::Spectator).parse(i),
+            "StartProg" => start_prog.map(Self::StartProg).parse(i),
             "TeamScore" => team_score.map(Self::TeamScore).parse(i),
             "TextMsg" => text_msg.map(Self::TextMsg).parse(i),
             "WaveStatus" => wave_status.map(Self::WaveStatus).parse(i),
@@ -1064,6 +1065,16 @@ fn spectator(i: &[u8]) -> IResult<&[u8], Spectator> {
         .map(|(client_index, is_spectator)| Spectator {
             client_index,
             is_spectator,
+        })
+        .parse(i)
+}
+
+fn start_prog(i: &[u8]) -> IResult<&[u8], StartProg> {
+    all_consuming((le_u8, team, le_u16.map(|v| Duration::from_secs(v as u64))))
+        .map(|(area_index, team, cap_duration)| StartProg {
+            area_index,
+            team,
+            cap_duration,
         })
         .parse(i)
 }

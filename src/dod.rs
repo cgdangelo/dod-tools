@@ -2,7 +2,7 @@ use dem::types::UserMessage;
 use nom::{
     bytes::complete::take_until,
     combinator::{all_consuming, eof, fail, opt, success},
-    multi::many0,
+    multi::{length_count, many0},
     number::complete::{le_i16, le_u16, le_u8},
     IResult, Parser,
 };
@@ -332,22 +332,21 @@ pub struct HudText {
 pub struct InitHUD {}
 
 #[derive(Debug)]
-struct Objective {
-    _unk1: u16,
+pub struct Objective {
+    pub entity_index: u16,
     pub area_index: u8,
-    pub team: Team,         // u8
-    pub is_spawnable: bool, // u8
+    pub team: Option<Team>, // u8
+    pub _unk1: u8,
     pub neutral_icon_index: u8,
     pub allies_icon_index: u8,
     pub axis_icon_index: u8,
-    _unk2: u8, // coord?
-               // unk3?? coord?
+    pub origin: (u8, u8),
 }
 
 /// - Length: varies
 #[derive(Debug)]
 pub struct InitObj {
-    pub points: Vec<Objective>,
+    pub objectives: Vec<Objective>,
 }
 
 /// - Length: 6
@@ -800,6 +799,7 @@ impl TryFrom<&UserMessage> for Message {
             "Health" => health.map(Self::Health).parse(i),
             "HudText" => hud_text.map(Self::HudText).parse(i),
             "InitHUD" => init_hud.map(Self::InitHUD).parse(i),
+            "InitObj" => init_obj.map(Self::InitObj).parse(i),
             "MOTD" => motd.map(Self::MOTD).parse(i),
             "ObjScore" => obj_score.map(Self::ObjScore).parse(i),
             "PClass" => p_class.map(Self::PClass).parse(i),
@@ -989,6 +989,48 @@ fn init_hud(i: &[u8]) -> IResult<&[u8], InitHUD> {
     eof.map(|_| InitHUD {}).parse(i)
 }
 
+fn init_obj(i: &[u8]) -> IResult<&[u8], InitObj> {
+    // likely inaccurate?
+    let objective = |i| -> IResult<&[u8], Objective> {
+        (
+            le_u16,
+            le_u8,
+            opt(team),
+            le_u8,
+            le_u8,
+            le_u8,
+            le_u8,
+            (le_u8, le_u8),
+        )
+            .map(
+                |(
+                    entity_index,
+                    area_index,
+                    team,
+                    _unk1,
+                    neutral_icon_index,
+                    allies_icon_index,
+                    axis_icon_index,
+                    origin,
+                )| Objective {
+                    entity_index,
+                    area_index,
+                    team,
+                    _unk1, // ! (spawnflags & 1)
+                    neutral_icon_index,
+                    allies_icon_index,
+                    axis_icon_index,
+                    origin,
+                },
+            )
+            .parse(i)
+    };
+
+    all_consuming(length_count(le_u8, objective))
+        .map(|objectives| InitObj { objectives })
+        .parse(i)
+}
+
 fn motd(i: &[u8]) -> IResult<&[u8], MOTD> {
     all_consuming((
         le_u8.map(|v| v != 0),
@@ -1175,37 +1217,6 @@ fn wave_time(i: &[u8]) -> IResult<&[u8], WaveTime> {
 }
 
 fn weapon_list(i: &[u8]) -> IResult<&[u8], WeaponList> {
-    // primary id
-    // primary max
-    // secondary id
-    // secondary max
-    // slot
-    // position in slot
-    // weapon id
-    // unk
-    // flags
-    // clip size
-
-    // let (_, weapon_list) = peek((
-    //     le_u8, le_u8, le_u8, le_u8, le_u8, le_u8, weapon, le_u8, le_u8, le_u8,
-    // ))
-    //     .parse(i)?;
-    //
-    // println!("weapon_list = {:?}", weapon_list);
-    //
-    // fail().parse(i)
-
-    // pub primary_ammo_id: u8,
-    // pub primary_ammo_max: u8,
-    // pub secondary_ammo_id: u8,
-    // pub secondary_ammo_max: u8,
-    // pub slot: u8,
-    // pub position_in_slot: u8,
-    // pub weapon: Weapon,
-    // _unk1: u8,
-    // _unk2: u8,
-    // pub clip_size: u8,
-
     all_consuming((
         le_u8, le_u8, le_u8, le_u8, le_u8, le_u8, weapon, le_u8, le_u8, le_u8,
     ))

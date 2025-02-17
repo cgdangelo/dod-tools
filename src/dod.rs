@@ -619,7 +619,9 @@ pub struct TimerStatus {}
 /// - Length: 1
 /// - Value: 0 or 1
 #[derive(Debug)]
-pub struct UseSound {}
+pub struct UseSound {
+    pub is_button_pressed: bool,
+}
 
 /// Sent when the POV needs to render a VGUI menu?
 ///
@@ -807,6 +809,7 @@ impl TryFrom<&UserMessage> for Message {
             "StartProg" => start_prog.map(Self::StartProg).parse(i),
             "TeamScore" => team_score.map(Self::TeamScore).parse(i),
             "TextMsg" => text_msg.map(Self::TextMsg).parse(i),
+            "UseSound" => use_sound.map(Self::UseSound).parse(i),
             "WaveStatus" => wave_status.map(Self::WaveStatus).parse(i),
             "WaveTime" => wave_time.map(Self::WaveTime).parse(i),
             _ => fail::<&[u8], Message, _>().parse(i),
@@ -1110,6 +1113,12 @@ fn text_msg(i: &[u8]) -> IResult<&[u8], TextMsg> {
         arg4,
     })
     .parse(i)
+}
+
+fn use_sound(i: &[u8]) -> IResult<&[u8], UseSound> {
+    all_consuming(le_u8.map(|v| v != 0))
+        .map(|is_button_pressed| UseSound { is_button_pressed })
+        .parse(i)
 }
 
 fn wave_status(i: &[u8]) -> IResult<&[u8], WaveStatus> {

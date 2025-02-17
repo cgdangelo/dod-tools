@@ -1,16 +1,14 @@
 use dem::types::UserMessage;
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take};
-use nom::sequence::terminated;
 use nom::{
-    bytes::complete::take_until,
+    branch::alt,
+    bytes::complete::{tag, take_until},
     combinator::{all_consuming, eof, fail, opt, success},
     multi::{length_count, many0},
-    number::complete::{le_i16, le_u16, le_u8},
+    number::complete::{le_i16, le_i8, le_u16, le_u8},
+    sequence::terminated,
     IResult, Parser,
 };
 use std::time::Duration;
-use nom::combinator::peek;
 
 #[derive(Debug)]
 pub enum Message {
@@ -214,9 +212,9 @@ pub struct ClanTimer(pub Duration);
 pub struct ClCorpse {
     pub model_name: String,
     pub origin: (i16, i16, i16),
-    pub angle: (i16, i16, i16),
+    pub angle: (i8, i8, i8),
     pub animation_sequence: u8,
-    // pub body: u8, // Missing?
+    pub body: u16,
     pub team: Team,
 }
 
@@ -885,16 +883,18 @@ fn cl_corpse(i: &[u8]) -> IResult<&[u8], ClCorpse> {
     all_consuming((
         null_string,
         (le_i16, le_i16, le_i16),
-        (le_i16, le_i16, le_i16),
+        (le_i8, le_i8, le_i8),
         le_u8,
+        le_u16,
         team,
     ))
     .map(
-        |(model_name, origin, angle, animation_sequence, team)| ClCorpse {
+        |(model_name, origin, angle, animation_sequence, body, team)| ClCorpse {
             model_name,
             origin,
             angle,
             animation_sequence,
+            body,
             team,
         },
     )

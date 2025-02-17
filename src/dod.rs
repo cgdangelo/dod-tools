@@ -608,7 +608,7 @@ pub struct TextMsg {
 
 /// - Length: 2
 #[derive(Debug)]
-pub struct TimeLeft {}
+pub struct TimeLeft(pub Duration);
 
 /// - Length: 3
 #[derive(Debug)]
@@ -819,6 +819,7 @@ impl TryFrom<&UserMessage> for Message {
             "StartProg" => start_prog.map(Self::StartProg).parse(i),
             "TeamScore" => team_score.map(Self::TeamScore).parse(i),
             "TextMsg" => text_msg.map(Self::TextMsg).parse(i),
+            "TimeLeft" => time_left.map(Self::TimeLeft).parse(i),
             "UseSound" => use_sound.map(Self::UseSound).parse(i),
             "WaveStatus" => wave_status.map(Self::WaveStatus).parse(i),
             "WaveTime" => wave_time.map(Self::WaveTime).parse(i),
@@ -1144,6 +1145,13 @@ fn text_msg(i: &[u8]) -> IResult<&[u8], TextMsg> {
         arg4,
     })
     .parse(i)
+}
+
+fn time_left(i: &[u8]) -> IResult<&[u8], TimeLeft> {
+    all_consuming(le_u16)
+        .map(|x| Duration::from_secs(x as u64))
+        .map(TimeLeft)
+        .parse(i)
 }
 
 fn use_sound(i: &[u8]) -> IResult<&[u8], UseSound> {

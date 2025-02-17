@@ -1,10 +1,10 @@
 use dem::types::UserMessage;
+use nom::combinator::success;
 use nom::{
-    bytes::complete::{tag, take_until},
+    bytes::complete::take_until,
     combinator::{all_consuming, eof, fail, opt},
     multi::many0,
     number::complete::{le_i16, le_u16, le_u8},
-    sequence::terminated,
     IResult, Parser,
 };
 use std::time::Duration;
@@ -163,9 +163,11 @@ pub enum Weapon {
 #[derive(Debug)]
 pub struct AmmoPickup {}
 
-/// - Length: 3
 #[derive(Debug)]
-pub struct AmmoShort {}
+pub struct AmmoShort {
+    pub ammo_id: u8,
+    pub amount: i16,
+}
 
 #[derive(Debug)]
 pub struct AmmoX {
@@ -177,15 +179,17 @@ pub struct AmmoX {
 #[derive(Debug)]
 pub struct BloodPuff(pub (i16, i16, i16));
 
-/// - Length: varies
 #[derive(Debug)]
-pub struct CameraView {}
+pub struct CameraView {
+    pub target_name: String,
+}
 
 /// Sent when objective capture is interrupted.
-///
-/// - Length: 2
 #[derive(Debug)]
-pub struct CancelProg {}
+pub struct CancelProg {
+    _unk1: u8,
+    _unk2: u8,
+}
 
 /// Sent when an objective is captured by a player.
 #[derive(Debug)]
@@ -204,16 +208,40 @@ pub struct ClanTimer(pub Duration);
 /// - Frequency: unknown trigger; often
 /// - Length: variable
 #[derive(Debug)]
-pub struct ClCorpse {}
+pub struct ClCorpse {
+    pub entity_index: u8,
+    pub model_name: String,
+    pub origin: (i16, i16, i16),
+    pub angle: (i16, i16, i16),
+    pub animation_sequence: u8,
+    pub body: i16,
+    pub team: Team,
+}
 
 /// - Frequency: unknown trigger; often in POV, once in HLTV
 /// - Length: variable; often 2
+/// - Values:
+///     CAreaCapture::area_SendStatus = {m_iAreaIndex, -1, sz_HudIcon}
+///     CAreaCapture::area_SetIndex = {m_iAreaIndex, -1, sz_HudIcon}
+///     CBasePlayer::HandleSignals = {m_iCapAreaIconIndex, 0}
+///     CBasePlayer::HandleSignals = {m_iObjectAreaIndex, 0}
+///     CBasePlayer::SetClientAreaIcon = {int, bool}
+///     CBreakable::area_SendStatus = {m_iAreaIndex, -1, sz_HudIcon}
+///     CBreakable::area_SetIndex = {m_iAreaIndex, -1, sz_HudIcon}
+///     CDoDTeamPlay::LevelChangeResets = {0, 2}
+///     CObjectCapture::area_SendStatus = {m_iAreaIndex, -1, sz_HudIcon}
+///     CObjectCapture::area_SetIndex = {m_iAreaIndex, -1, sz_HudIcon}
 #[derive(Debug)]
-pub struct ClientAreas {}
+pub struct ClientAreas {
+    pub icon_index: u8,
+    pub hud_icon: Option<String>,
+}
 
 /// - Length: 1
 #[derive(Debug)]
-pub struct CurMarker {}
+pub struct CurMarker {
+    pub marker_id: u8,
+}
 
 /// - Length: 3
 #[derive(Debug)]
@@ -248,15 +276,31 @@ pub struct Frags {
 
 /// - Frequency: 1 each spawn in POV; 1 on connection in HLTV?
 /// - Length: 2
+/// - Value: likely bitfields = {allies_rules, axis_rules}
+///
+///  struct gameplay_rules_t // sizeof=0x30
+///  {                                       // XREF: CDoDTeamPlay/r
+///                                          // CDoDDetect/r
+///      bool m_bAlliesInfiniteLives;
+///      bool m_bAxisInfiniteLives;
+///      bool m_bAlliesArePara;
+///      bool m_bAxisArePara;
+///      bool m_bAlliesAreBrit;
 #[derive(Debug)]
-pub struct GameRules {}
+pub struct GameRules {
+    _unk1: u8,
+    _unk2: u8,
+}
 
 /// Sent when a player should play a hand signal animation.
 ///
 /// - Length: 2
 /// - Value: (client_index, animation_id)?
 #[derive(Debug)]
-pub struct HandSignal {}
+pub struct HandSignal {
+    pub client_index: u8,
+    pub animation_id: u8,
+}
 
 /// Sent when the POV's health changes to rerender the HUD.
 ///
@@ -289,9 +333,24 @@ pub struct HudText {
 #[derive(Debug)]
 pub struct InitHUD {}
 
+#[derive(Debug)]
+struct Objective {
+    _unk1: u16,
+    pub area_index: u8,
+    pub team: Team,         // u8
+    pub is_spawnable: bool, // u8
+    pub neutral_icon_index: u8,
+    pub allies_icon_index: u8,
+    pub axis_icon_index: u8,
+    _unk2: u8, // coord?
+               // unk3?? coord?
+}
+
 /// - Length: varies
 #[derive(Debug)]
-pub struct InitObj {}
+pub struct InitObj {
+    pub points: Vec<Objective>,
+}
 
 /// - Length: 6
 #[derive(Debug)]
@@ -330,6 +389,17 @@ pub struct PClass {
 }
 
 /// - Length: varies
+///
+/// ```
+///   (*((void (__cdecl **)(_DWORD))&gTankSpread.has_disconnected + 48))(this->m_iGroupId);
+///   (*((void (__cdecl **)(int))&gTankSpread.has_disconnected + 48))(this->m_iState);
+///   if ( this->m_iState == 1 )
+///   {
+///     (*((void (__cdecl **)(_DWORD))&gTankSpread.has_disconnected + 53))(LODWORD(this->m_vShootDir.x));
+///     (*((void (__cdecl **)(_DWORD))&gTankSpread.has_disconnected + 53))(LODWORD(this->m_vShootDir.y));
+///     (*((void (__cdecl **)(_DWORD))&gTankSpread.has_disconnected + 53))(LODWORD(this->m_vShootDir.z));
+///   }
+/// ```
 #[derive(Debug)]
 pub struct PShoot {}
 
@@ -355,10 +425,18 @@ pub struct PTeam {
 ///
 /// - Length: 4
 #[derive(Debug)]
-pub struct PlayersIn {}
+pub struct PlayersIn {
+    pub area_index: u8,
+    pub team: u8,
+    pub players_inside_area: u8,
+    pub required_players_for_area: u8,
+}
 
 /// - Length: 3
-pub struct ProgUpdate {}
+pub struct ProgUpdate {
+    pub area_index: u8,
+    pub team: Team,
+}
 
 /// - Length: 0
 #[derive(Debug)]
@@ -392,22 +470,40 @@ pub struct SayText {
     pub text: String,
 }
 
-/// Sent when the POV looks through a scope on a sniper rifle.
+/// Sent when the POV looks through a scope of a weapon.
 ///
 /// - Length: 1
-/// - Value: always 0
+/// - Value:
+///     CBasePlayerWeapon::ZoomIn = m_iId
+///     CBasePlayerWeapon::ZoomOut = 0
+///     CDoDTeamPlay::UpdateData
 #[derive(Debug)]
 pub struct Scope {}
 
 /// Possibly deprecated and replaced by [ScoreShort].
+///
+/// CDoDTeamPlay::InitHUD
+/// CDoDTeamPlay::UpdateData
 #[derive(Debug)]
 pub struct ScoreInfo {
-    client_index: u8,
-    points: i8,
-    kills: i8,
-    deaths: i8,
-    class_id: u8,
-    team_id: u8,
+    pub client_index: u8,
+    pub points: i8,
+    pub kills: i8,
+    pub deaths: i8,
+    pub class: Class,
+    pub team: Team,
+}
+
+/// Intended to be sent when the values in a [ScoreInfo] would overflow, but [ScoreInfoLong].
+///
+/// - Length: 10
+#[derive(Debug)]
+pub struct ScoreInfoLong {
+    pub client_index: u8,
+    pub score: i16,
+    pub frags: i16,
+    pub class: Class,
+    pub team: Team,
 }
 
 /// - Length: 8
@@ -418,10 +514,6 @@ pub struct ScoreShort {
     pub kills: i16,
     pub deaths: i16,
 }
-
-/// - Length: 10
-#[derive(Debug)]
-pub struct ScoreInfoLong {}
 
 #[derive(Debug)]
 pub struct ScreenFade {
@@ -455,7 +547,11 @@ pub struct SetFOV(pub u8);
 /// - Length: 3
 /// - Value: (0..4, 0..2, 0)
 #[derive(Debug)]
-pub struct SetObj {}
+pub struct SetObj {
+    pub client_index: u8,
+    pub team: Team,
+    _unk1: u8,
+}
 
 /// - Length: varies
 #[derive(Debug)]
@@ -475,11 +571,19 @@ pub struct Spectator {
 ///
 /// - Length: 4
 #[derive(Debug)]
-pub struct StartProg {}
+pub struct StartProg {
+    pub area_index: u8,
+    pub team: Team,
+    pub cap_duration: Duration, // u16
+}
 
 /// - Length: 4
 #[derive(Debug)]
-pub struct StartProgF {}
+pub struct StartProgF {
+    pub area_index: u8,
+    pub team: Team,
+    pub cap_duration: Duration, // f32 -> WRITE_COORD -> u16 -> f32 -> Duration
+}
 
 /// - Value: 0..100 (health?)
 #[derive(Debug)]
@@ -563,7 +667,7 @@ fn wrapped_string<T>(i: &[u8], f: fn(String) -> T) -> IResult<&[u8], T> {
 }
 
 fn null_string(i: &[u8]) -> IResult<&[u8], String> {
-    terminated(take_until("\x00"), tag("\x00"))
+    take_until("\x00")
         .map(Vec::from)
         .map_res(String::from_utf8)
         .parse(i)
@@ -676,6 +780,7 @@ impl TryFrom<&UserMessage> for Message {
             "BloodPuff" => blood_puff.map(Self::BloodPuff).parse(i),
             "CapMsg" => cap_msg.map(Self::CapMsg).parse(i),
             "ClanTimer" => clan_timer.map(Self::ClanTimer).parse(i),
+            "ClientAreas" => client_areas.map(Self::ClientAreas).parse(i),
             "CurWeapon" => cur_weapon.map(Self::CurWeapon).parse(i),
             "DeathMsg" => death_msg.map(Self::DeathMsg).parse(i),
             "Frags" => frags.map(Self::Frags).parse(i),
@@ -756,6 +861,40 @@ fn clan_timer(i: &[u8]) -> IResult<&[u8], ClanTimer> {
             ClanTimer(duration)
         })
         .parse(i)
+}
+
+fn client_areas(i: &[u8]) -> IResult<&[u8], ClientAreas> {
+    let (i, icon_index) = le_u8(i)?;
+    let (i, flags) = le_u8(i)?;
+
+    let (i, hud_icon) = match flags {
+        255 => null_string.map(Some).parse(i)?,
+        _ => success(None).parse(i)?,
+    };
+
+    Ok((
+        i,
+        ClientAreas {
+            icon_index,
+            hud_icon,
+        },
+    ))
+
+    // (le_u8, le_u8.and_then(|a| success(a)))
+    //     .map(|_| ClientAreas {
+    //         icon_index: 0,
+    //         _unk2: 0,
+    //         hud_icon: "".to_string(),
+    //     })
+    //     .parse(i)
+
+    // (le_u8, le_u8, null_string, le_u8)
+    //     .map(|(icon_index, _unk2, hud_icon, _)| ClientAreas {
+    //         icon_index,
+    //         _unk2,
+    //         hud_icon,
+    //     })
+    //     .parse(i)
 }
 
 fn cur_weapon(i: &[u8]) -> IResult<&[u8], CurWeapon> {

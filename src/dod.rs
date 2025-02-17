@@ -1,4 +1,7 @@
 use dem::types::UserMessage;
+use nom::branch::alt;
+use nom::bytes::complete::{tag, take};
+use nom::sequence::terminated;
 use nom::{
     bytes::complete::take_until,
     combinator::{all_consuming, eof, fail, opt, success},
@@ -7,6 +10,7 @@ use nom::{
     IResult, Parser,
 };
 use std::time::Duration;
+use nom::combinator::peek;
 
 #[derive(Debug)]
 pub enum Message {
@@ -677,7 +681,7 @@ fn wrapped_string<T>(i: &[u8], f: fn(String) -> T) -> IResult<&[u8], T> {
 }
 
 fn null_string(i: &[u8]) -> IResult<&[u8], String> {
-    take_until("\x00")
+    alt((tag("\x00"), terminated(take_until("\x00"), tag("\x00"))))
         .map(Vec::from)
         .map_res(String::from_utf8)
         .parse(i)
@@ -1170,7 +1174,7 @@ fn team_score(i: &[u8]) -> IResult<&[u8], TeamScore> {
 }
 
 fn text_msg(i: &[u8]) -> IResult<&[u8], TextMsg> {
-    all_consuming((
+    let (i, text_msg) = all_consuming((
         le_u8,
         null_string,
         opt(null_string),
@@ -1186,7 +1190,9 @@ fn text_msg(i: &[u8]) -> IResult<&[u8], TextMsg> {
         arg3,
         arg4,
     })
-    .parse(i)
+    .parse(i)?;
+
+    Ok((i, text_msg))
 }
 
 fn time_left(i: &[u8]) -> IResult<&[u8], TimeLeft> {

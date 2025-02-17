@@ -38,10 +38,10 @@ pub enum Message {
     ObjScore(ObjScore),
     Object(Object),
     PClass(PClass),
-    PlayersIn(PlayersIn),
     PShoot(PShoot),
     PStatus(PStatus),
     PTeam(PTeam),
+    PlayersIn(PlayersIn),
     ReloadDone(ReloadDone),
     ResetHUD(ResetHUD),
     ResetSens(ResetSens),
@@ -427,7 +427,7 @@ pub struct PTeam {
 #[derive(Debug)]
 pub struct PlayersIn {
     pub area_index: u8,
-    pub team: u8,
+    pub team: Team,
     pub players_inside_area: u8,
     pub required_players_for_area: u8,
 }
@@ -792,6 +792,7 @@ impl TryFrom<&UserMessage> for Message {
             "PClass" => p_class.map(Self::PClass).parse(i),
             "PStatus" => p_status.map(Self::PStatus).parse(i),
             "PTeam" => p_team.map(Self::PTeam).parse(i),
+            "PlayersIn" => players_in.map(Self::PlayersIn).parse(i),
             "ReloadDone" => reload_done.map(Self::ReloadDone).parse(i),
             "ResetHUD" => reset_hud.map(Self::ResetHUD).parse(i),
             "ResetSens" => reset_sens.map(Self::ResetSens).parse(i),
@@ -984,6 +985,19 @@ fn p_status(i: &[u8]) -> IResult<&[u8], PStatus> {
 fn p_team(i: &[u8]) -> IResult<&[u8], PTeam> {
     all_consuming((le_u8, team))
         .map(|(client_index, team)| PTeam { client_index, team })
+        .parse(i)
+}
+
+fn players_in(i: &[u8]) -> IResult<&[u8], PlayersIn> {
+    all_consuming((le_u8, team, le_u8, le_u8))
+        .map(
+            |(area_index, team, players_inside_area, required_players_for_area)| PlayersIn {
+                area_index,
+                team,
+                players_inside_area,
+                required_players_for_area,
+            },
+        )
         .parse(i)
 }
 

@@ -187,7 +187,7 @@ pub struct CameraView {
 /// Sent when objective capture is interrupted.
 #[derive(Debug)]
 pub struct CancelProg {
-    _unk1: u8,
+    pub area_index: u8,
     _unk2: u8,
 }
 
@@ -778,6 +778,7 @@ impl TryFrom<&UserMessage> for Message {
         let (_, message) = match message_name {
             "AmmoX" => ammox.map(Self::AmmoX).parse(i),
             "BloodPuff" => blood_puff.map(Self::BloodPuff).parse(i),
+            "CancelProg" => cancel_prog.map(Self::CancelProg).parse(i),
             "CapMsg" => cap_msg.map(Self::CapMsg).parse(i),
             "ClanTimer" => clan_timer.map(Self::ClanTimer).parse(i),
             "ClientAreas" => client_areas.map(Self::ClientAreas).parse(i),
@@ -842,6 +843,12 @@ fn ammox(i: &[u8]) -> IResult<&[u8], AmmoX> {
 fn blood_puff(i: &[u8]) -> IResult<&[u8], BloodPuff> {
     all_consuming((le_i16, le_i16, le_i16))
         .map(BloodPuff)
+        .parse(i)
+}
+
+fn cancel_prog(i: &[u8]) -> IResult<&[u8], CancelProg> {
+    all_consuming((le_u8, le_u8))
+        .map(|(area_index, _unk2)| CancelProg { area_index, _unk2 })
         .parse(i)
 }
 

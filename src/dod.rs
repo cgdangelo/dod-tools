@@ -679,10 +679,12 @@ fn wrapped_string<T>(i: &[u8], f: fn(String) -> T) -> IResult<&[u8], T> {
 }
 
 fn null_string(i: &[u8]) -> IResult<&[u8], String> {
-    alt((tag("\x00"), terminated(take_until("\x00"), tag("\x00"))))
-        .map(Vec::from)
-        .map_res(String::from_utf8)
-        .parse(i)
+    alt((
+        tag("\x00").map(|_| vec![]),
+        terminated(take_until("\x00"), tag("\x00")).map(Vec::from),
+    ))
+    .map_res(String::from_utf8)
+    .parse(i)
 }
 
 fn class(i: &[u8]) -> IResult<&[u8], Class> {

@@ -643,7 +643,18 @@ pub struct WaveTime(pub Duration); // u8
 /// - Frequency: many on POV connection?
 /// - Length: varies
 #[derive(Debug)]
-pub struct WeaponList {}
+pub struct WeaponList {
+    pub primary_ammo_id: u8,
+    pub primary_ammo_max: u8,
+    pub secondary_ammo_id: u8,
+    pub secondary_ammo_max: u8,
+    pub slot: u8,
+    pub position_in_slot: u8,
+    pub weapon: Weapon,
+    _unk1: u8,
+    _unk2: u8,
+    pub clip_size: u8,
+}
 
 /// - Length: 1
 #[derive(Debug)]
@@ -811,6 +822,7 @@ impl TryFrom<&UserMessage> for Message {
             "UseSound" => use_sound.map(Self::UseSound).parse(i),
             "WaveStatus" => wave_status.map(Self::WaveStatus).parse(i),
             "WaveTime" => wave_time.map(Self::WaveTime).parse(i),
+            "WeaponList" => weapon_list.map(Self::WeaponList).parse(i),
             _ => fail::<&[u8], Message, _>().parse(i),
         }
         .map_err(|e| {
@@ -1152,4 +1164,69 @@ fn wave_time(i: &[u8]) -> IResult<&[u8], WaveTime> {
             WaveTime(duration)
         })
         .parse(i)
+}
+
+fn weapon_list(i: &[u8]) -> IResult<&[u8], WeaponList> {
+    // primary id
+    // primary max
+    // secondary id
+    // secondary max
+    // slot
+    // position in slot
+    // weapon id
+    // unk
+    // flags
+    // clip size
+
+    // let (_, weapon_list) = peek((
+    //     le_u8, le_u8, le_u8, le_u8, le_u8, le_u8, weapon, le_u8, le_u8, le_u8,
+    // ))
+    //     .parse(i)?;
+    //
+    // println!("weapon_list = {:?}", weapon_list);
+    //
+    // fail().parse(i)
+
+    // pub primary_ammo_id: u8,
+    // pub primary_ammo_max: u8,
+    // pub secondary_ammo_id: u8,
+    // pub secondary_ammo_max: u8,
+    // pub slot: u8,
+    // pub position_in_slot: u8,
+    // pub weapon: Weapon,
+    // _unk1: u8,
+    // _unk2: u8,
+    // pub clip_size: u8,
+
+    all_consuming((
+        le_u8, le_u8, le_u8, le_u8, le_u8, le_u8, weapon, le_u8, le_u8, le_u8,
+    ))
+    .map(
+        |(
+            primary_ammo_id,
+            primary_ammo_max,
+            secondary_ammo_id,
+            secondary_ammo_max,
+            slot,
+            position_in_slot,
+            weapon,
+            _unk1,
+            _unk2,
+            clip_size,
+        )| {
+            WeaponList {
+                primary_ammo_id,
+                primary_ammo_max,
+                secondary_ammo_id,
+                secondary_ammo_max,
+                slot,
+                position_in_slot,
+                weapon,
+                _unk1,
+                _unk2,
+                clip_size,
+            }
+        },
+    )
+    .parse(i)
 }

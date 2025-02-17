@@ -1,8 +1,7 @@
 use dem::types::UserMessage;
-use nom::combinator::success;
 use nom::{
     bytes::complete::take_until,
-    combinator::{all_consuming, eof, fail, opt},
+    combinator::{all_consuming, eof, fail, opt, success},
     multi::many0,
     number::complete::{le_i16, le_u16, le_u8},
     IResult, Parser,
@@ -128,8 +127,8 @@ pub enum Weapon {
     Mp40 = 12,
     Mk2Grenade = 13,
     StickGrenade = 14,
-    // 15 ?
-    // 16 ?
+    // 15 ? Something related to grenades...
+    // 16 ? Something related to grenades...
     Mg42 = 17,
     Browning30Cal = 18,
     Spade = 19,
@@ -209,12 +208,11 @@ pub struct ClanTimer(pub Duration);
 /// - Length: variable
 #[derive(Debug)]
 pub struct ClCorpse {
-    pub entity_index: u8,
     pub model_name: String,
     pub origin: (i16, i16, i16),
     pub angle: (i16, i16, i16),
     pub animation_sequence: u8,
-    pub body: i16,
+    // pub body: u8, // Missing?
     pub team: Team,
 }
 
@@ -782,6 +780,7 @@ impl TryFrom<&UserMessage> for Message {
             "BloodPuff" => blood_puff.map(Self::BloodPuff).parse(i),
             "CancelProg" => cancel_prog.map(Self::CancelProg).parse(i),
             "CapMsg" => cap_msg.map(Self::CapMsg).parse(i),
+            "ClCorpse" => cl_corpse.map(Self::ClCorpse).parse(i),
             "ClanTimer" => clan_timer.map(Self::ClanTimer).parse(i),
             "ClientAreas" => client_areas.map(Self::ClientAreas).parse(i),
             "CurWeapon" => cur_weapon.map(Self::CurWeapon).parse(i),
@@ -863,6 +862,26 @@ fn cap_msg(i: &[u8]) -> IResult<&[u8], CapMsg> {
             team,
         })
         .parse(i)
+}
+
+fn cl_corpse(i: &[u8]) -> IResult<&[u8], ClCorpse> {
+    all_consuming((
+        null_string,
+        (le_i16, le_i16, le_i16),
+        (le_i16, le_i16, le_i16),
+        le_u8,
+        team,
+    ))
+    .map(
+        |(model_name, origin, angle, animation_sequence, team)| ClCorpse {
+            model_name,
+            origin,
+            angle,
+            animation_sequence,
+            team,
+        },
+    )
+    .parse(i)
 }
 
 fn clan_timer(i: &[u8]) -> IResult<&[u8], ClanTimer> {

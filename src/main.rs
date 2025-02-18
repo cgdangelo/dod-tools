@@ -7,7 +7,8 @@ use std::cmp::{Ordering, PartialEq};
 use std::collections::HashMap;
 use std::convert::identity;
 use std::env::args;
-use std::fmt::Debug;
+use std::fmt::{Debug, Write};
+use std::path::PathBuf;
 use std::str::from_utf8;
 use tabled::{builder::Builder, settings::Style};
 use uuid::Uuid;
@@ -134,18 +135,11 @@ impl AnalyzerState {
             Some(current_player) => {
                 // A new player has taken over the slot from an old player
                 if current_player.player_global_id != player_global_id {
-                    println!(
-                        "Invalidating {} for {}",
-                        &current_player.player_global_id.0, &player_global_id.0
-                    );
-
                     // Indicate that the old player is disconnected now
                     current_player.connection_status = ConnectionStatus::Disconnected;
 
                     // Try to find an existing record of the player
                     if let Some(player) = self.find_player_by_global_id_mut(&player_global_id) {
-                        println!("Setting {} to {}", &player.player_global_id.0, &player.name);
-
                         player.name = player_name;
                         player.connection_status = ConnectionStatus::Connected {
                             client_id: svc_update_user_info.index,
@@ -154,21 +148,11 @@ impl AnalyzerState {
                         panic!("Could not find player {}", &player_global_id.0);
                     }
                 } else {
-                    println!(
-                        "Updating existing player {} from {} to {}",
-                        &current_player.player_global_id.0, &current_player.name, &player_name
-                    );
-
                     current_player.name = player_name;
                 }
             }
 
             None => {
-                println!(
-                    "Inserting new player {} (\"{}\") at {}",
-                    &player_global_id.0, &player_name, &svc_update_user_info.index
-                );
-
                 self.players.push(Player {
                     connection_status: ConnectionStatus::Connected {
                         client_id: svc_update_user_info.index,
@@ -191,9 +175,9 @@ enum AnalyzerEvent<'a> {
 
 fn main() {
     let args = args().collect::<Vec<_>>();
-    let demo_path = args.get(1).unwrap();
+    let demo_path = args.get(1).map(PathBuf::from).unwrap();
 
-    let demo = open_demo(demo_path).unwrap();
+    let demo = open_demo(&demo_path).unwrap();
 
     let analysis = demo
         .directory
@@ -221,6 +205,8 @@ fn main() {
             state.mutate_from_analyzer_event(event);
             state
         });
+
+    let mut output = String::new();
 
     let mut table_builder = Builder::default();
     table_builder.push_record(["ID", "Name", "Team", "Score", "Kills", "Deaths"]);
@@ -258,5 +244,15 @@ fn main() {
     let mut table = table_builder.build();
     table.with(Style::markdown());
 
-    println!("{}", table);
+    let file_name = &demo_path.to_str().unwrap();
+
+    writeln!(&mut output, "# Summary for: {}\n", file_name).unwrap();
+
+    let map_name = String::from_utf8(demo.header.map_name).unwrap();
+    writeln!(&mut output, "- Map name: {}", map_name).unwrap();
+    writeln!(&mut output).unwrap();
+
+    writeln!(&mut output, "{}", table).unwrap();
+
+    println!("{}", output);
 }

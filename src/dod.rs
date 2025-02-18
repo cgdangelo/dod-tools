@@ -75,7 +75,7 @@ pub enum Message {
     YouDied(YouDied),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Team {
     Allies,
     Axis,

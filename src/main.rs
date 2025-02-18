@@ -1,10 +1,15 @@
 use crate::dod::{Class, Message, Team};
-use dem::open_demo;
-use dem::types::{EngineMessage, FrameData, MessageData, NetMessage, SvcUpdateUserInfo};
+use dem::{
+    open_demo,
+    types::{EngineMessage, FrameData, MessageData, NetMessage, SvcUpdateUserInfo},
+};
+use std::cmp::{Ordering, PartialEq};
 use std::collections::HashMap;
 use std::convert::identity;
 use std::env::args;
+use std::fmt::Debug;
 use std::str::from_utf8;
+use tabled::{builder::Builder, settings::Style};
 use uuid::Uuid;
 
 mod dod;
@@ -67,7 +72,7 @@ impl AnalyzerState {
 
             AnalyzerEvent::UserMessage(user_msg) => match user_msg {
                 Message::PClass(p_class) => {
-                    let player = self.find_player_by_client_index_mut(p_class.client_index);
+                    let player = self.find_player_by_client_index_mut(p_class.client_index - 1);
 
                     if let Some(player) = player {
                         player.class = Some(p_class.class);
@@ -75,7 +80,7 @@ impl AnalyzerState {
                 }
 
                 Message::PTeam(p_team) => {
-                    let player = self.find_player_by_client_index_mut(p_team.client_index);
+                    let player = self.find_player_by_client_index_mut(p_team.client_index - 1);
 
                     if let Some(player) = player {
                         player.team = Some(p_team.team);
@@ -83,7 +88,7 @@ impl AnalyzerState {
                 }
 
                 Message::ScoreShort(score_short) => {
-                    let player = self.find_player_by_client_index_mut(score_short.client_index);
+                    let player = self.find_player_by_client_index_mut(score_short.client_index - 1);
 
                     if let Some(player) = player {
                         player.stats = (
@@ -129,11 +134,18 @@ impl AnalyzerState {
             Some(current_player) => {
                 // A new player has taken over the slot from an old player
                 if current_player.player_global_id != player_global_id {
+                    println!(
+                        "Invalidating {} for {}",
+                        &current_player.player_global_id.0, &player_global_id.0
+                    );
+
                     // Indicate that the old player is disconnected now
                     current_player.connection_status = ConnectionStatus::Disconnected;
 
                     // Try to find an existing record of the player
                     if let Some(player) = self.find_player_by_global_id_mut(&player_global_id) {
+                        println!("Setting {} to {}", &player.player_global_id.0, &player.name);
+
                         player.name = player_name;
                         player.connection_status = ConnectionStatus::Connected {
                             client_id: svc_update_user_info.index,
@@ -142,11 +154,21 @@ impl AnalyzerState {
                         panic!("Could not find player {}", &player_global_id.0);
                     }
                 } else {
+                    println!(
+                        "Updating existing player {} from {} to {}",
+                        &current_player.player_global_id.0, &current_player.name, &player_name
+                    );
+
                     current_player.name = player_name;
                 }
             }
 
             None => {
+                println!(
+                    "Inserting new player {} (\"{}\") at {}",
+                    &player_global_id.0, &player_name, &svc_update_user_info.index
+                );
+
                 self.players.push(Player {
                     connection_status: ConnectionStatus::Connected {
                         client_id: svc_update_user_info.index,
@@ -200,5 +222,41 @@ fn main() {
             state
         });
 
-    println!("{:#?}", analysis);
+    let mut table_builder = Builder::default();
+    table_builder.push_record(["ID", "Name", "Team", "Score", "Kills", "Deaths"]);
+
+    let mut table_data = Vec::from(analysis.players);
+    table_data.sort_by(|left, right| match (&left.team, &right.team) {
+        (Some(left_team), Some(right_team)) if left_team == right_team => {
+            left.stats.0.cmp(&right.stats.0).reverse()
+        }
+
+        (Some(Team::Allies), _) => Ordering::Less,
+        (Some(Team::Axis), Some(Team::Spectators)) => Ordering::Less,
+        (Some(Team::Spectators) | None, _) => Ordering::Greater,
+
+        _ => Ordering::Equal,
+    });
+
+    for player in &table_data {
+        table_builder.push_record([
+            player.player_global_id.0.to_string(),
+            player.name.to_string(),
+            match player.team {
+                None => "Unknown",
+                Some(Team::Allies) => "Allies",
+                Some(Team::Axis) => "Axis",
+                Some(Team::Spectators) => "Spectators",
+            }
+            .to_string(),
+            player.stats.0.to_string(),
+            player.stats.1.to_string(),
+            player.stats.2.to_string(),
+        ]);
+    }
+
+    let mut table = table_builder.build();
+    table.with(Style::markdown());
+
+    println!("{}", table);
 }

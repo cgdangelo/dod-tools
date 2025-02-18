@@ -830,11 +830,7 @@ impl TryFrom<&UserMessage> for Message {
             "WeaponList" => weapon_list.map(Self::WeaponList).parse(i),
             _ => fail::<&[u8], Message, _>().parse(i),
         }
-        .map_err(|e| {
-            // println!("{} {:?} {:?}", message_name, e, value.data);
-
-            ()
-        })?;
+        .map_err(|_| ())?;
 
         Ok(message)
     }

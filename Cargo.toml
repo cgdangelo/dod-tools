@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 dem = "0.2.2"
 nom = "8.0.0"
+uuid = { version = "1.13.2", features = ["v4"] }

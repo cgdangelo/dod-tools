@@ -209,7 +209,7 @@ fn main() {
     let mut output = String::new();
 
     let mut table_builder = Builder::default();
-    table_builder.push_record(["ID", "Name", "Team", "Score", "Kills", "Deaths"]);
+    table_builder.push_record(["ID", "Name", "Team", "Class", "Score", "Kills", "Deaths"]);
 
     let mut table_data = Vec::from(analysis.players);
     table_data.sort_by(|left, right| match (&left.team, &right.team) {
@@ -228,13 +228,17 @@ fn main() {
         table_builder.push_record([
             player.player_global_id.0.to_string(),
             player.name.to_string(),
-            match player.team {
+            match &player.team {
                 None => "Unknown",
                 Some(Team::Allies) => "Allies",
                 Some(Team::Axis) => "Axis",
                 Some(Team::Spectators) => "Spectators",
             }
             .to_string(),
+            match &player.class {
+                None => "Unknown".to_string(),
+                Some(x) => format!("{:?}", x),
+            },
             player.stats.0.to_string(),
             player.stats.1.to_string(),
             player.stats.2.to_string(),

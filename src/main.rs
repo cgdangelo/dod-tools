@@ -40,6 +40,29 @@ struct Player {
     stats: (i32, i32, i32),
 }
 
+impl Player {
+    fn new(global_id: PlayerGlobalId) -> Self {
+        Self {
+            connection_status: ConnectionStatus::Disconnected,
+            name: String::new(),
+            player_global_id: global_id,
+            team: None,
+            class: None,
+            stats: (0, 0, 0),
+        }
+    }
+
+    fn with_connection_status(&mut self, connection_status: ConnectionStatus) -> &mut Self {
+        self.connection_status = connection_status;
+        self
+    }
+
+    fn with_name(&mut self, name: impl ToString) -> &mut Self {
+        self.name = name.to_string();
+        self
+    }
+}
+
 #[derive(Default, Debug)]
 struct AnalyzerState {
     players: Vec<Player>,
@@ -160,16 +183,15 @@ impl AnalyzerState {
                             client_id: svc_update_user_info.index,
                         };
                     } else {
-                        self.players.push(Player {
-                            connection_status: ConnectionStatus::Connected {
+                        let mut new_player = Player::new(player_global_id);
+
+                        new_player
+                            .with_connection_status(ConnectionStatus::Connected {
                                 client_id: svc_update_user_info.index,
-                            },
-                            name: player_name,
-                            player_global_id,
-                            team: None,
-                            class: None,
-                            stats: (0, 0, 0),
-                        });
+                            })
+                            .with_name("");
+
+                        self.players.push(new_player);
                     }
                 } else {
                     current_player.name = player_name;
@@ -177,16 +199,15 @@ impl AnalyzerState {
             }
 
             None => {
-                self.players.push(Player {
-                    connection_status: ConnectionStatus::Connected {
+                let mut new_player = Player::new(player_global_id);
+
+                new_player
+                    .with_connection_status(ConnectionStatus::Connected {
                         client_id: svc_update_user_info.index,
-                    },
-                    name: player_name,
-                    player_global_id,
-                    team: None,
-                    class: None,
-                    stats: (0, 0, 0),
-                });
+                    })
+                    .with_name("");
+
+                self.players.push(new_player);
             }
         }
     }

@@ -16,9 +16,15 @@ mod analysis;
 mod dod;
 
 fn main() {
-    let args = args().collect::<Vec<_>>();
-    let demo_path = args.get(1).map(PathBuf::from).unwrap();
+    let os_args = args().collect::<Vec<_>>();
 
+    for path_str in &os_args[1..] {
+        run_analyzer(path_str);
+    }
+}
+
+fn run_analyzer(path_str: &str) {
+    let demo_path = PathBuf::from(path_str);
     let demo = open_demo(&demo_path).unwrap();
 
     let analysis = demo

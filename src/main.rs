@@ -253,6 +253,7 @@ fn main() {
     writeln!(&mut output, "# Summary for: {}\n", file_name).unwrap();
 
     let map_name = String::from_utf8(demo.header.map_name).unwrap();
+    let map_name = map_name.trim_end_matches('\x00');
     writeln!(&mut output, "- Map name: {}", map_name).unwrap();
     writeln!(&mut output).unwrap();
 

@@ -120,13 +120,28 @@ impl AnalyzerState {
 
         let player_global_id = fields
             .get("*sid")
-            .map(|x| PlayerGlobalId(x.to_string()))
-            .unwrap_or(PlayerGlobalId(Uuid::new_v4().to_string()));
+            .map(|s| s.to_string())
+            .or_else(|| {
+                // CD key hash also happens to be 16 bytes, so we can use those to generate a UUID.
+                let uuid = Uuid::from_slice(&svc_update_user_info.cd_key_hash)
+                    .unwrap()
+                    .simple();
+
+                Some(uuid.to_string())
+            })
+            .map(PlayerGlobalId)
+            .expect(
+                format!(
+                    "Could not resolve a global id for player {} in slot {}",
+                    svc_update_user_info.id, svc_update_user_info.index
+                )
+                .as_str(),
+            );
 
         let player_name = fields
             .get("name")
             .map(|x| x.to_string())
-            .unwrap_or(format!("Player {}", svc_update_user_info.index));
+            .unwrap_or(format!("Player {}", svc_update_user_info.id));
 
         let existing_player_in_slot =
             self.find_player_by_client_index_mut(svc_update_user_info.index);
@@ -145,7 +160,16 @@ impl AnalyzerState {
                             client_id: svc_update_user_info.index,
                         };
                     } else {
-                        panic!("Could not find player {}", &player_global_id.0);
+                        self.players.push(Player {
+                            connection_status: ConnectionStatus::Connected {
+                                client_id: svc_update_user_info.index,
+                            },
+                            name: player_name,
+                            player_global_id,
+                            team: None,
+                            class: None,
+                            stats: (0, 0, 0),
+                        });
                     }
                 } else {
                     current_player.name = player_name;

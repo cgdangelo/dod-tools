@@ -45,7 +45,7 @@ impl Player {
             team: None,
             class: None,
             stats: (0, 0, 0),
-            kill_streaks: vec![],
+            kill_streaks: vec![KillStreak { kills: vec![] }],
         }
     }
 
@@ -214,10 +214,6 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
         let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
 
         if let Some(killer) = killer {
-            if killer.kill_streaks.is_empty() {
-                killer.kill_streaks.push(KillStreak { kills: vec![] });
-            }
-
             if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
                 killer_current_streak
                     .kills

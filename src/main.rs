@@ -60,13 +60,10 @@ fn run_analyzer(path_str: &str) {
             state
         });
 
-    let mut output = String::new();
+    // Players sorted by team then kills
+    let mut ordered_players = Vec::from_iter(&analysis.players);
 
-    let mut table_builder = Builder::default();
-    table_builder.push_record(["ID", "Name", "Team", "Class", "Score", "Kills", "Deaths"]);
-
-    let mut table_data = Vec::from_iter(&analysis.players);
-    table_data.sort_by(|left, right| match (&left.team, &right.team) {
+    ordered_players.sort_by(|left, right| match (&left.team, &right.team) {
         (Some(left_team), Some(right_team)) if left_team == right_team => {
             left.stats.0.cmp(&right.stats.0).reverse()
         }
@@ -78,7 +75,22 @@ fn run_analyzer(path_str: &str) {
         _ => Ordering::Equal,
     });
 
-    for player in &table_data {
+    let mut output = String::new();
+
+    // Header section
+    writeln!(&mut output, "# Summary\n").unwrap();
+
+    let file_name = &demo_path.to_str().unwrap();
+    writeln!(&mut output, "- File name: `{}`", file_name).unwrap();
+    let map_name = String::from_utf8(demo.header.map_name).unwrap();
+    let map_name = map_name.trim_end_matches('\x00');
+    writeln!(&mut output, "- Map name: {}\n", map_name).unwrap();
+
+    // Player scoreboard section
+    let mut table_builder = Builder::default();
+    table_builder.push_record(["ID", "Name", "Team", "Class", "Score", "Kills", "Deaths"]);
+
+    for player in &ordered_players {
         table_builder.push_record([
             player.player_global_id.0.to_string(),
             player.name.to_string(),
@@ -99,30 +111,54 @@ fn run_analyzer(path_str: &str) {
         ]);
     }
 
+    writeln!(&mut output, "## Scoreboard\n").unwrap();
+
     let mut table = table_builder.build();
     table.with(Style::markdown());
 
-    let file_name = &demo_path.to_str().unwrap();
-
-    // Header section
-    writeln!(&mut output, "# Summary for: {}\n", file_name).unwrap();
-    let map_name = String::from_utf8(demo.header.map_name).unwrap();
-    let map_name = map_name.trim_end_matches('\x00');
-    writeln!(&mut output, "- Map name: {}\n", map_name).unwrap();
-
-    // Player scoreboard section
-    writeln!(&mut output, "## Scoreboard\n").unwrap();
     writeln!(&mut output, "{}\n", table).unwrap();
 
     // Kill streaks section
     writeln!(&mut output, "## Kill Streaks\n").unwrap();
 
-    for player in &analysis.players {
+    for player in &ordered_players {
         writeln!(&mut output, "### {}\n", player.name).unwrap();
 
+        let mut table_builder = Builder::default();
+        table_builder.push_record([
+            "Wave",
+            "Total Kills",
+            "Start Time",
+            "Duration",
+            "Weapons Used",
+        ]);
+
         for (wave, kill_streak) in player.kill_streaks.iter().enumerate() {
-            writeln!(&mut output, "- Wave {}: {:#?}", wave + 1, kill_streak.kills).unwrap();
+            if let (Some((start_time, _)), Some((end_time, _))) =
+                (kill_streak.kills.first(), kill_streak.kills.last())
+            {
+                let streak_duration = *end_time - *start_time;
+                let weapons_used = kill_streak
+                    .kills
+                    .iter()
+                    .map(|(_, weapon)| format!("{:?}", weapon))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                table_builder.push_record([
+                    (wave + 1).to_string(),
+                    kill_streak.kills.len().to_string(),
+                    String::new(), // TODO From frame time
+                    streak_duration.as_secs().to_string(),
+                    weapons_used,
+                ]);
+            }
         }
+
+        let mut table = table_builder.build();
+        table.with(Style::markdown());
+
+        writeln!(&mut output, "{}\n", table).unwrap();
     }
 
     println!("{}", output);

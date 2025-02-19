@@ -37,15 +37,18 @@ impl Display for Report<'_> {
         });
 
         // Header section
-        writeln!(f, "# Summary\n")?;
-
-        let file_name = &self.file_info.path.to_str().unwrap();
-        writeln!(f, "- File name: `{}`", file_name)?;
-
+        let file_name = &self
+            .file_info
+            .path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap();
         let map_name = String::from_utf8(self.demo.header.map_name.to_vec()).unwrap();
         let map_name = map_name.trim_end_matches('\x00');
-        writeln!(f, "- Map name: {}", map_name)?;
+        writeln!(f, "# Summary: {} on {}\n", file_name, map_name)?;
 
+        let file_path = &self.file_info.path.to_str().unwrap();
+        writeln!(f, "- File name: `{}`", file_path)?;
         let file_created_at = format_rfc3339_seconds(*self.file_info.created_at);
         writeln!(f, "- File created at: {}", file_created_at)?;
         let report_created_at = format_rfc3339_seconds(SystemTime::now());

@@ -87,6 +87,7 @@ pub enum AnalyzerEvent<'a> {
 pub struct AnalyzerState {
     pub current_time: GameTime,
     pub players: Vec<Player>,
+    pub team_scores: HashMap<Team, i32>,
 }
 
 impl AnalyzerState {
@@ -307,5 +308,16 @@ pub fn use_weapon_breakdown_updates(state: &mut AnalyzerState, event: &AnalyzerE
 
             *kills_by_weapon += 1;
         }
+    }
+}
+
+pub fn use_team_score_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::UserMessage(Message::TeamScore(team_score)) = event {
+        let team_entry = state
+            .team_scores
+            .entry(team_score.team.clone())
+            .or_insert(0);
+
+        *team_entry = team_score.score as i32;
     }
 }

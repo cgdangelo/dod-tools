@@ -79,7 +79,22 @@ impl Display for Report<'_> {
             ]);
         }
 
-        writeln!(f, "## Scoreboard\n")?;
+        let match_result_fragment = match (
+            self.analysis.team_scores.get(&Team::Allies),
+            self.analysis.team_scores.get(&Team::Axis),
+        ) {
+            (Some(allies_score), Some(axis_score)) => {
+                format!(
+                    ": Allies ({}) {} Axis ({})",
+                    allies_score,
+                    if allies_score > axis_score { ">" } else { "<" },
+                    axis_score
+                )
+            }
+            _ => String::new(),
+        };
+
+        writeln!(f, "## Scoreboard{}\n", match_result_fragment)?;
 
         let mut table = table_builder.build();
         table.with(Style::markdown());

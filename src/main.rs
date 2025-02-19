@@ -1,7 +1,4 @@
-use crate::analysis::{
-    use_kill_streak_updates, use_player_updates, use_scoreboard_updates, use_timing_updates,
-    use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
-};
+use crate::analysis::{use_kill_streak_updates, use_player_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState};
 use crate::dod::Message;
 use crate::reporting::{FileInfo, Report};
 use dem::{
@@ -71,6 +68,7 @@ fn run_analyzer(path_str: &str) {
             use_scoreboard_updates(&mut state, &event);
             use_kill_streak_updates(&mut state, &event);
             use_weapon_breakdown_updates(&mut state, &event);
+            use_team_score_updates(&mut state, &event);
 
             state
         });

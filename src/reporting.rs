@@ -80,7 +80,7 @@ impl Display for Report<'_> {
             writeln!(f, "### {}\n", player.name)?;
 
             // Kills per weapon section
-            writeln!(f, "### Weapon Breakdown\n")?;
+            writeln!(f, "#### Weapon Breakdown\n")?;
 
             let mut table_builder = Builder::default();
             table_builder.push_record(["Weapon", "Kills"]);
@@ -95,7 +95,7 @@ impl Display for Report<'_> {
             writeln!(f, "{}\n", table)?;
 
             // Kill streaks section
-            writeln!(f, "### Kill Streaks\n")?;
+            writeln!(f, "#### Kill Streaks\n")?;
 
             let mut table_builder = Builder::default();
             table_builder.push_record([

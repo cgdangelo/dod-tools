@@ -3,14 +3,17 @@ use crate::analysis::{
     use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
 };
 use crate::dod::Message;
-use crate::reporting::Report;
+use crate::reporting::{FileInfo, Report};
 use dem::{
     open_demo,
     types::{FrameData, MessageData, NetMessage},
 };
+use filetime::FileTime;
 use std::convert::identity;
 use std::env::args;
+use std::fs;
 use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
 
 mod analysis;
 #[allow(dead_code)]
@@ -72,8 +75,22 @@ fn run_analyzer(path_str: &str) {
             state
         });
 
+    let created_at = fs::metadata(&demo_path)
+        .map_err(|_| ())
+        .and_then(|metadata| FileTime::from_creation_time(&metadata).ok_or(()))
+        .map(|file_time| {
+            let creation_offset =
+                Duration::new(file_time.unix_seconds() as u64, file_time.nanoseconds());
+
+            SystemTime::UNIX_EPOCH + creation_offset
+        })
+        .unwrap();
+
     let reporter = Report {
-        file_path: &demo_path,
+        file_info: FileInfo {
+            created_at: &created_at,
+            path: &demo_path,
+        },
         demo: &demo,
         analysis: &analysis,
     };

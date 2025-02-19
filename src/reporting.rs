@@ -1,16 +1,21 @@
 use crate::analysis::AnalyzerState;
 use crate::dod::Team;
 use dem::types::Demo;
-use humantime::format_duration;
+use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use tabled::{builder::Builder, settings::Style};
+
+pub struct FileInfo<'a> {
+    pub created_at: &'a SystemTime,
+    pub path: &'a PathBuf,
+}
 
 pub struct Report<'a> {
     pub analysis: &'a AnalyzerState,
-    pub file_path: &'a PathBuf,
+    pub file_info: FileInfo<'a>,
     pub demo: &'a Demo,
 }
 
@@ -34,12 +39,17 @@ impl Display for Report<'_> {
         // Header section
         writeln!(f, "# Summary\n")?;
 
-        let file_name = &self.file_path.to_str().unwrap();
+        let file_name = &self.file_info.path.to_str().unwrap();
+        writeln!(f, "- File name: `{}`", file_name)?;
+
         let map_name = String::from_utf8(self.demo.header.map_name.to_vec()).unwrap();
         let map_name = map_name.trim_end_matches('\x00');
+        writeln!(f, "- Map name: {}", map_name)?;
 
-        writeln!(f, "- File name: `{}`", file_name)?;
-        writeln!(f, "- Map name: {}\n", map_name)?;
+        let file_created_at = format_rfc3339_seconds(*self.file_info.created_at);
+        writeln!(f, "- File created at: {}", file_created_at)?;
+        let report_created_at = format_rfc3339_seconds(SystemTime::now());
+        writeln!(f, "- Report created at: {}\n", report_created_at)?;
 
         // Player scoreboard section
         let mut table_builder = Builder::default();

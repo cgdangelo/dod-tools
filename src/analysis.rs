@@ -110,6 +110,12 @@ impl AnalyzerState {
         })
     }
 
+    fn find_player_by_global_id(&self, global_id: &PlayerGlobalId) -> Option<&Player> {
+        self.players
+            .iter()
+            .find(|player| player.player_global_id == *global_id)
+    }
+
     fn find_player_by_global_id_mut(&mut self, global_id: &PlayerGlobalId) -> Option<&mut Player> {
         self.players
             .iter_mut()
@@ -182,46 +188,29 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             .map(|x| x.to_string())
             .unwrap_or(format!("Player {}", svc_update_user_info.id));
 
-        let existing_player_in_slot =
-            state.find_player_by_client_index_mut(svc_update_user_info.index);
-
-        if let Some(current_player) = existing_player_in_slot {
-            // A new player has taken over the slot from an old player
-            if current_player.player_global_id != player_global_id {
-                // Indicate that the old player is disconnected now
-                current_player.connection_status = ConnectionStatus::Disconnected;
-
-                // Try to find an existing record of the player
-                if let Some(player) = state.find_player_by_global_id_mut(&player_global_id) {
-                    player.name = player_name;
-                    player.connection_status = ConnectionStatus::Connected {
-                        client_id: svc_update_user_info.index,
-                    };
-                } else {
-                    let mut new_player = Player::new(player_global_id);
-
-                    new_player
-                        .with_connection_status(ConnectionStatus::Connected {
-                            client_id: svc_update_user_info.index,
-                        })
-                        .with_name("");
-
-                    state.players.push(new_player);
-                }
-            } else {
-                current_player.name = player_name;
-            }
-        } else {
-            let mut new_player = Player::new(player_global_id);
-
-            new_player
-                .with_connection_status(ConnectionStatus::Connected {
-                    client_id: svc_update_user_info.index,
-                })
-                .with_name("");
+        // Make sure a record of this player exists first
+        if let None = state.find_player_by_global_id(&player_global_id) {
+            let insert_id = player_global_id.clone();
+            let new_player = Player::new(insert_id);
 
             state.players.push(new_player);
+        };
+
+        // Flush any existing player from this slot
+        if let Some(player_in_slot) =
+            state.find_player_by_client_index_mut(svc_update_user_info.index)
+        {
+            player_in_slot.with_connection_status(ConnectionStatus::Disconnected);
         }
+
+        // Find the player from the message, and assign it to the slot
+        state
+            .find_player_by_global_id_mut(&player_global_id)
+            .unwrap()
+            .with_connection_status(ConnectionStatus::Connected {
+                client_id: svc_update_user_info.index,
+            })
+            .with_name(player_name);
     }
 }
 

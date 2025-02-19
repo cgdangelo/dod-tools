@@ -75,14 +75,14 @@ pub enum Message {
     YouDied(YouDied),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Team {
     Allies,
     Axis,
     Spectators,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Class {
     AxisMortar,
     Bazooka,
@@ -113,7 +113,7 @@ pub enum Class {
     Unteroffizer,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Weapon {
     Kabar = 1,
     GermanKnife = 2,

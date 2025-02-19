@@ -1,4 +1,4 @@
-use crate::analysis::{AnalyzerEvent, AnalyzerState};
+use crate::analysis::{use_player_updates, use_scoreboard_updates, AnalyzerEvent, AnalyzerState};
 use crate::dod::{Message, Team};
 use dem::{
     open_demo,
@@ -50,7 +50,9 @@ fn run_analyzer(path_str: &str) {
             NetMessage::EngineMessage(engine_msg) => Some(AnalyzerEvent::EngineMessage(engine_msg)),
         })
         .fold(AnalyzerState::default(), |mut state, event| {
-            state.mutate_from_analyzer_event(event);
+            use_player_updates(&mut state, &event);
+            use_scoreboard_updates(&mut state, &event);
+
             state
         });
 

@@ -88,6 +88,16 @@ pub struct AnalyzerState {
 }
 
 impl AnalyzerState {
+    fn find_player_by_client_index(&self, client_index: u8) -> Option<&Player> {
+        self.players.iter().find(|player| {
+            if let ConnectionStatus::Connected { client_id } = player.connection_status {
+                client_id == client_index
+            } else {
+                false
+            }
+        })
+    }
+
     fn find_player_by_client_index_mut(&mut self, client_index: u8) -> Option<&mut Player> {
         self.players.iter_mut().find(|player| {
             if let ConnectionStatus::Connected { client_id } = player.connection_status {
@@ -240,13 +250,25 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
     if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
         let current_time = state.current_time.clone();
 
+        let killer = state.find_player_by_client_index(death_msg.killer_client_index - 1);
+        let victim = state.find_player_by_client_index(death_msg.victim_client_index - 1);
+
+        let is_teamkill = match (killer, victim) {
+            (Some(fst), Some(snd)) => fst.team == snd.team,
+            _ => false,
+        };
+
+        if is_teamkill {
+            return;
+        }
+
         let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
 
         if let Some(killer) = killer {
             if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
                 killer_current_streak
                     .kills
-                    .push((current_time, death_msg.weapon.clone())); // TODO Calculate from frame time
+                    .push((current_time, death_msg.weapon.clone()));
             }
         }
 

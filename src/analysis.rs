@@ -146,6 +146,17 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
                 map
             });
 
+        // Missing fields indicates that the user has disconnected, so we only update their
+        // connection status and preserve the last known details.
+        if fields.is_empty() {
+            let player = state.find_player_by_client_index_mut(svc_update_user_info.index);
+
+            if let Some(disconnected_player) = player {
+                disconnected_player.connection_status = ConnectionStatus::Disconnected;
+                return;
+            }
+        }
+
         let player_global_id = fields
             .get("*sid")
             .map(|s| s.to_string())

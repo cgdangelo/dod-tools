@@ -113,7 +113,7 @@ pub enum Class {
     Unteroffizer,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Weapon {
     Kabar = 1,
     GermanKnife = 2,

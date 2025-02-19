@@ -44,6 +44,7 @@ pub struct Player {
     pub class: Option<Class>,
     pub stats: (i32, i32, i32),
     pub kill_streaks: Vec<KillStreak>,
+    pub weapon_breakdown: HashMap<Weapon, i32>,
 }
 
 #[derive(Debug)]
@@ -61,6 +62,7 @@ impl Player {
             class: None,
             stats: (0, 0, 0),
             kill_streaks: vec![KillStreak { kills: vec![] }],
+            weapon_breakdown: HashMap::new(),
         }
     }
 
@@ -277,6 +279,33 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
         if let Some(victim) = victim {
             // End the current streak by adding a new record
             victim.kill_streaks.push(KillStreak { kills: vec![] });
+        }
+    }
+}
+
+pub fn use_weapon_breakdown_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
+        let killer = state.find_player_by_client_index(death_msg.killer_client_index - 1);
+        let victim = state.find_player_by_client_index(death_msg.victim_client_index - 1);
+
+        let is_teamkill = match (killer, victim) {
+            (Some(fst), Some(snd)) => fst.team == snd.team,
+            _ => false,
+        };
+
+        if is_teamkill {
+            return;
+        }
+
+        let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
+
+        if let Some(killer) = killer {
+            let kills_by_weapon = killer
+                .weapon_breakdown
+                .entry(death_msg.weapon.clone())
+                .or_insert(0);
+
+            *kills_by_weapon += 1;
         }
     }
 }

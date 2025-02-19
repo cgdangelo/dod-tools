@@ -1,6 +1,6 @@
 use crate::analysis::{
     use_kill_streak_updates, use_player_updates, use_scoreboard_updates, use_timing_updates,
-    AnalyzerEvent, AnalyzerState,
+    use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
 };
 use crate::dod::{Message, Team};
 use dem::{
@@ -70,6 +70,7 @@ fn run_analyzer(path_str: &str) {
             use_player_updates(&mut state, &event);
             use_scoreboard_updates(&mut state, &event);
             use_kill_streak_updates(&mut state, &event);
+            use_weapon_breakdown_updates(&mut state, &event);
 
             state
         });
@@ -95,9 +96,10 @@ fn run_analyzer(path_str: &str) {
     writeln!(&mut output, "# Summary\n").unwrap();
 
     let file_name = &demo_path.to_str().unwrap();
-    writeln!(&mut output, "- File name: `{}`", file_name).unwrap();
     let map_name = String::from_utf8(demo.header.map_name).unwrap();
     let map_name = map_name.trim_end_matches('\x00');
+    
+    writeln!(&mut output, "- File name: `{}`", file_name).unwrap();
     writeln!(&mut output, "- Map name: {}\n", map_name).unwrap();
 
     // Player scoreboard section
@@ -126,17 +128,35 @@ fn run_analyzer(path_str: &str) {
     }
 
     writeln!(&mut output, "## Scoreboard\n").unwrap();
-
+    
     let mut table = table_builder.build();
     table.with(Style::markdown());
 
     writeln!(&mut output, "{}\n", table).unwrap();
 
-    // Kill streaks section
-    writeln!(&mut output, "## Kill Streaks\n").unwrap();
+    // Individual player summaries
+    writeln!(&mut output, "## Player Summaries\n").unwrap();
 
     for player in &ordered_players {
         writeln!(&mut output, "### {}\n", player.name).unwrap();
+
+        // Kills per weapon section
+        writeln!(&mut output, "### Weapon Breakdown\n").unwrap();
+
+        let mut table_builder = Builder::default();
+        table_builder.push_record(["Weapon", "Kills"]);
+
+        for (weapon, kills) in player.weapon_breakdown.iter() {
+            table_builder.push_record([format!("{:?}", weapon), kills.to_string()]);
+        }
+
+        let mut table = table_builder.build();
+        table.with(Style::markdown());
+
+        writeln!(&mut output, "{}\n", table).unwrap();
+
+        // Kill streaks section
+        writeln!(&mut output, "### Kill Streaks\n").unwrap();
 
         let mut table_builder = Builder::default();
         table_builder.push_record([

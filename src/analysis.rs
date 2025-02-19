@@ -2,8 +2,23 @@ use crate::dod::{Class, Message, Team, Weapon};
 use dem::types::EngineMessage;
 use std::collections::HashMap;
 use std::str::from_utf8;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
+
+#[derive(Clone, Debug)]
+pub struct GameTime {
+    pub origin: Instant,
+    pub offset: Duration,
+}
+
+impl Default for GameTime {
+    fn default() -> Self {
+        Self {
+            origin: Instant::now(),
+            offset: Duration::from_secs(0),
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct PlayerGlobalId(pub String);
@@ -33,7 +48,7 @@ pub struct Player {
 
 #[derive(Debug)]
 pub struct KillStreak {
-    pub kills: Vec<(Instant, Weapon)>,
+    pub kills: Vec<(GameTime, Weapon)>,
 }
 
 impl Player {
@@ -63,10 +78,12 @@ impl Player {
 pub enum AnalyzerEvent<'a> {
     EngineMessage(&'a EngineMessage),
     UserMessage(Message),
+    SetTime(f32),
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct AnalyzerState {
+    pub current_time: GameTime,
     pub players: Vec<Player>,
 }
 
@@ -85,6 +102,16 @@ impl AnalyzerState {
         self.players
             .iter_mut()
             .find(|player| player.player_global_id == *global_id)
+    }
+}
+
+pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::SetTime(frame_time_offset) = event {
+        let mut next_time = state.current_time.clone();
+
+        next_time.offset = Duration::from_secs_f32(*frame_time_offset);
+
+        state.current_time = next_time;
     }
 }
 
@@ -211,13 +238,15 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
 
 pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
+        let current_time = state.current_time.clone();
+
         let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
 
         if let Some(killer) = killer {
             if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
                 killer_current_streak
                     .kills
-                    .push((Instant::now(), death_msg.weapon.clone())); // TODO Calculate from frame time
+                    .push((current_time, death_msg.weapon.clone())); // TODO Calculate from frame time
             }
         }
 

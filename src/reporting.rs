@@ -52,7 +52,13 @@ impl Display for Report<'_> {
         let file_created_at = format_rfc3339_seconds(*self.file_info.created_at);
         writeln!(f, "- File created at: {}", file_created_at)?;
         let report_created_at = format_rfc3339_seconds(SystemTime::now());
-        writeln!(f, "- Report created at: {}\n", report_created_at)?;
+        writeln!(f, "- Report created at: {}", report_created_at)?;
+        let demo_protocol = &self.demo.header.demo_protocol;
+        writeln!(f, "- Demo protocol: {}", demo_protocol)?;
+        let network_protocol = &self.demo.header.network_protocol;
+        writeln!(f, "- Network protocol: {}", &network_protocol)?;
+
+        writeln!(f)?;
 
         // Player scoreboard section
         let mut table_builder = Builder::default();

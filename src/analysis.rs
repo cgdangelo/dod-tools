@@ -80,7 +80,7 @@ impl Player {
 pub enum AnalyzerEvent<'a> {
     EngineMessage(&'a EngineMessage),
     UserMessage(Message),
-    SetTime(f32),
+    TimeUpdate(f32),
 }
 
 #[derive(Debug, Default)]
@@ -118,7 +118,7 @@ impl AnalyzerState {
 }
 
 pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::SetTime(frame_time_offset) = event {
+    if let AnalyzerEvent::TimeUpdate(frame_time_offset) = event {
         let mut next_time = state.current_time.clone();
 
         next_time.offset = Duration::from_secs_f32(*frame_time_offset);

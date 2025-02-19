@@ -59,7 +59,7 @@ fn run_analyzer(path_str: &str) {
                 Some(events)
             }
 
-            _ => Some(vec![AnalyzerEvent::SetTime(frame.time)]),
+            _ => Some(vec![AnalyzerEvent::TimeUpdate(frame.time)]),
         })
         .flat_map(identity)
         .fold(AnalyzerState::default(), |mut state, event| {

@@ -1,4 +1,7 @@
-use crate::analysis::{use_player_updates, use_scoreboard_updates, AnalyzerEvent, AnalyzerState};
+use crate::analysis::{
+    use_kill_streak_updates, use_player_updates, use_scoreboard_updates, AnalyzerEvent,
+    AnalyzerState,
+};
 use crate::dod::{Message, Team};
 use dem::{
     open_demo,
@@ -52,6 +55,7 @@ fn run_analyzer(path_str: &str) {
         .fold(AnalyzerState::default(), |mut state, event| {
             use_player_updates(&mut state, &event);
             use_scoreboard_updates(&mut state, &event);
+            use_kill_streak_updates(&mut state, &event);
 
             state
         });
@@ -61,7 +65,7 @@ fn run_analyzer(path_str: &str) {
     let mut table_builder = Builder::default();
     table_builder.push_record(["ID", "Name", "Team", "Class", "Score", "Kills", "Deaths"]);
 
-    let mut table_data = Vec::from(analysis.players);
+    let mut table_data = Vec::from_iter(&analysis.players);
     table_data.sort_by(|left, right| match (&left.team, &right.team) {
         (Some(left_team), Some(right_team)) if left_team == right_team => {
             left.stats.0.cmp(&right.stats.0).reverse()
@@ -100,14 +104,26 @@ fn run_analyzer(path_str: &str) {
 
     let file_name = &demo_path.to_str().unwrap();
 
+    // Header section
     writeln!(&mut output, "# Summary for: {}\n", file_name).unwrap();
-
     let map_name = String::from_utf8(demo.header.map_name).unwrap();
     let map_name = map_name.trim_end_matches('\x00');
-    writeln!(&mut output, "- Map name: {}", map_name).unwrap();
-    writeln!(&mut output).unwrap();
+    writeln!(&mut output, "- Map name: {}\n", map_name).unwrap();
 
-    writeln!(&mut output, "{}", table).unwrap();
+    // Player scoreboard section
+    writeln!(&mut output, "## Scoreboard\n").unwrap();
+    writeln!(&mut output, "{}\n", table).unwrap();
+
+    // Kill streaks section
+    writeln!(&mut output, "## Kill Streaks\n").unwrap();
+
+    for player in &analysis.players {
+        writeln!(&mut output, "### {}\n", player.name).unwrap();
+
+        for (wave, kill_streak) in player.kill_streaks.iter().enumerate() {
+            writeln!(&mut output, "- Wave {}: {:#?}", wave + 1, kill_streak.kills).unwrap();
+        }
+    }
 
     println!("{}", output);
 }

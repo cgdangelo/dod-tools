@@ -1,7 +1,8 @@
-use crate::dod::{Class, Message, Team};
+use crate::dod::{Class, Message, Team, Weapon};
 use dem::types::EngineMessage;
 use std::collections::HashMap;
 use std::str::from_utf8;
+use std::time::Instant;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -27,6 +28,12 @@ pub struct Player {
     pub team: Option<Team>,
     pub class: Option<Class>,
     pub stats: (i32, i32, i32),
+    pub kill_streaks: Vec<KillStreak>,
+}
+
+#[derive(Debug)]
+pub struct KillStreak {
+    pub kills: Vec<(Instant, Weapon)>,
 }
 
 impl Player {
@@ -38,6 +45,7 @@ impl Player {
             team: None,
             class: None,
             stats: (0, 0, 0),
+            kill_streaks: vec![],
         }
     }
 
@@ -199,4 +207,29 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
 
         _ => {}
     };
+}
+
+pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
+        let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
+
+        if let Some(killer) = killer {
+            if killer.kill_streaks.is_empty() {
+                killer.kill_streaks.push(KillStreak { kills: vec![] });
+            }
+
+            if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
+                killer_current_streak
+                    .kills
+                    .push((Instant::now(), death_msg.weapon.clone())); // TODO Calculate from frame time
+            }
+        }
+
+        let victim = state.find_player_by_client_index_mut(death_msg.victim_client_index - 1);
+
+        if let Some(victim) = victim {
+            // End the current streak by adding a new record
+            victim.kill_streaks.push(KillStreak { kills: vec![] });
+        }
+    }
 }

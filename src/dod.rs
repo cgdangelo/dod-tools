@@ -30,12 +30,12 @@ pub enum Message {
     HandSignal(HandSignal),
     Health(Health),
     HideWeapon(HideWeapon),
-    HLTV(HLTV),
+    Hltv(Hltv),
     HudText(HudText),
     InitHUD(InitHUD),
     InitObj(InitObj),
     MapMarker(MapMarker),
-    MOTD(MOTD),
+    Motd(Motd),
     ObjScore(ObjScore),
     Object(Object),
     PClass(PClass),
@@ -318,7 +318,7 @@ pub struct HideWeapon {}
 
 /// - Length: 2
 #[derive(Debug)]
-pub struct HLTV {}
+pub struct Hltv {}
 
 #[derive(Debug)]
 pub struct HudText {
@@ -357,7 +357,7 @@ pub struct MapMarker {}
 
 /// Sent when the POV connects to the server so it can render the MOTD window.
 #[derive(Debug)]
-pub struct MOTD {
+pub struct Motd {
     /// True if there are no more MOTD messages following this one, false otherwise.
     pub is_terminal: bool,
     pub text: String,
@@ -804,7 +804,7 @@ impl TryFrom<&UserMessage> for Message {
             "HudText" => hud_text.map(Self::HudText).parse(i),
             "InitHUD" => init_hud.map(Self::InitHUD).parse(i),
             "InitObj" => init_obj.map(Self::InitObj).parse(i),
-            "MOTD" => motd.map(Self::MOTD).parse(i),
+            "MOTD" => motd.map(Self::Motd).parse(i),
             "ObjScore" => obj_score.map(Self::ObjScore).parse(i),
             "PClass" => p_class.map(Self::PClass).parse(i),
             "PStatus" => p_status.map(Self::PStatus).parse(i),
@@ -1033,12 +1033,12 @@ fn init_obj(i: &[u8]) -> IResult<&[u8], InitObj> {
         .parse(i)
 }
 
-fn motd(i: &[u8]) -> IResult<&[u8], MOTD> {
+fn motd(i: &[u8]) -> IResult<&[u8], Motd> {
     all_consuming((
         le_u8.map(|v| v != 0),
         many0(le_u8).map_res(String::from_utf8),
     ))
-    .map(|(is_terminal, text)| MOTD { is_terminal, text })
+    .map(|(is_terminal, text)| Motd { is_terminal, text })
     .parse(i)
 }
 

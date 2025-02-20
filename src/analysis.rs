@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub struct GameTime {
+    #[allow(dead_code)]
     pub origin: Instant,
     pub offset: Duration,
 }
@@ -142,8 +143,8 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
 
     if let Some(svc_update_user_info) = svc_update_user_info {
         let fields = from_utf8(&svc_update_user_info.user_info)
-            .map(|s| s.trim_matches(['\0', '\\']).split("\\").collect())
-            .unwrap_or(vec![])
+            .map(|s| s.trim_matches(['\0', '\\']).split("\\").collect::<Vec<_>>())
+            .unwrap_or_default()
             .chunks_exact(2)
             .fold(HashMap::new(), |mut map, chunk| {
                 if let [key, value] = chunk {
@@ -190,13 +191,12 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
                 Some(uuid.to_string())
             })
             .map(PlayerGlobalId)
-            .expect(
-                format!(
+            .unwrap_or_else(|| {
+                panic!(
                     "Could not resolve a global id for player {} in slot {}",
                     svc_update_user_info.id, svc_update_user_info.index
                 )
-                .as_str(),
-            );
+            });
 
         let player_name = fields
             .get("name")
@@ -204,7 +204,7 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             .unwrap_or(format!("Player {}", svc_update_user_info.id));
 
         // Make sure a record of this player exists first
-        if let None = state.find_player_by_global_id(&player_global_id) {
+        if state.find_player_by_global_id(&player_global_id).is_none() {
             let insert_id = player_global_id.clone();
             let new_player = Player::new(insert_id);
 

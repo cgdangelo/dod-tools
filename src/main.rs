@@ -9,7 +9,6 @@ use dem::{
     types::{FrameData, MessageData, NetMessage},
 };
 use filetime::FileTime;
-use std::convert::identity;
 use std::env::args;
 use std::fs;
 use std::path::PathBuf;
@@ -64,7 +63,7 @@ fn run_analyzer(path_str: &str) {
 
             _ => Some(vec![AnalyzerEvent::TimeUpdate(frame.time)]),
         })
-        .flat_map(identity)
+        .flatten()
         .fold(AnalyzerState::default(), |mut state, event| {
             use_timing_updates(&mut state, &event);
             use_player_updates(&mut state, &event);

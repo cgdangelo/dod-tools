@@ -1,4 +1,7 @@
-use crate::analysis::{use_kill_streak_updates, use_player_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState};
+use crate::analysis::{
+    use_kill_streak_updates, use_player_updates, use_scoreboard_updates, use_team_score_updates,
+    use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
+};
 use crate::dod::Message;
 use crate::reporting::{FileInfo, Report};
 use dem::{

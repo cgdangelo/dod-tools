@@ -1,13 +1,10 @@
 use crate::analysis::{
-    use_kill_streak_updates, use_player_updates, use_scoreboard_updates, use_team_score_updates,
-    use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
+    frame_to_events, use_kill_streak_updates, use_player_updates, use_scoreboard_updates,
+    use_team_score_updates, use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent,
+    AnalyzerState,
 };
-use crate::dod::Message;
 use crate::reporting::{FileInfo, Report};
-use dem::{
-    open_demo,
-    types::{FrameData, MessageData, NetMessage},
-};
+use dem::open_demo;
 use filetime::FileTime;
 use std::env::args;
 use std::fs;
@@ -35,42 +32,24 @@ fn run_analyzer(path_str: &str) {
         .directory
         .entries
         .iter()
-        .flat_map(|entry| &entry.frames)
-        .filter_map(|frame| match &frame.frame_data {
-            FrameData::NetworkMessage(frame_data) => {
-                let messages = match &frame_data.1.messages {
-                    MessageData::Parsed(msgs) => Some(msgs),
-                    _ => None,
-                }?;
+        .flat_map(|entry| {
+            let mut events = entry
+                .frames
+                .iter()
+                .flat_map(frame_to_events)
+                .collect::<Vec<_>>();
 
-                let events = messages.iter().fold(vec![], |mut acc, net_msg| {
-                    match net_msg {
-                        NetMessage::UserMessage(user_msg) => {
-                            if let Ok(dod_msg) = Message::try_from(user_msg) {
-                                acc.push(AnalyzerEvent::UserMessage(dod_msg));
-                            }
-                        }
-                        NetMessage::EngineMessage(engine_msg) => {
-                            acc.push(AnalyzerEvent::EngineMessage(engine_msg));
-                        }
-                    }
-
-                    acc
-                });
-
-                Some(events)
-            }
-
-            _ => Some(vec![AnalyzerEvent::TimeUpdate(frame.time)]),
+            events.insert(0, AnalyzerEvent::Initialization);
+            events.push(AnalyzerEvent::Finalization);
+            events
         })
-        .flatten()
-        .fold(AnalyzerState::default(), |mut state, event| {
-            use_timing_updates(&mut state, &event);
-            use_player_updates(&mut state, &event);
-            use_scoreboard_updates(&mut state, &event);
-            use_kill_streak_updates(&mut state, &event);
-            use_weapon_breakdown_updates(&mut state, &event);
-            use_team_score_updates(&mut state, &event);
+        .fold(AnalyzerState::default(), |mut state, ref event| {
+            use_timing_updates(&mut state, event);
+            use_player_updates(&mut state, event);
+            use_scoreboard_updates(&mut state, event);
+            use_kill_streak_updates(&mut state, event);
+            use_weapon_breakdown_updates(&mut state, event);
+            use_team_score_updates(&mut state, event);
 
             state
         });

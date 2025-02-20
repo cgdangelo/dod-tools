@@ -1,5 +1,5 @@
 use crate::dod::{Class, Message, Team, Weapon};
-use dem::types::EngineMessage;
+use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
 use std::collections::HashMap;
 use std::str::from_utf8;
 use std::time::{Duration, Instant};
@@ -79,9 +79,11 @@ impl Player {
 }
 
 pub enum AnalyzerEvent<'a> {
+    Initialization,
     EngineMessage(&'a EngineMessage),
     UserMessage(Message),
     TimeUpdate(f32),
+    Finalization,
 }
 
 #[derive(Debug, Default)]
@@ -123,6 +125,31 @@ impl AnalyzerState {
             .iter_mut()
             .find(|player| player.player_global_id == *global_id)
     }
+}
+
+pub fn frame_to_events(frame: &Frame) -> Vec<AnalyzerEvent> {
+    let mut events: Vec<AnalyzerEvent> = vec![];
+
+    if let FrameData::NetworkMessage(frame_data) = &frame.frame_data {
+        if let MessageData::Parsed(msgs) = &frame_data.1.messages {
+            for net_msg in msgs {
+                match net_msg {
+                    NetMessage::UserMessage(user_msg) => {
+                        if let Ok(dod_msg) = Message::try_from(user_msg) {
+                            events.push(AnalyzerEvent::UserMessage(dod_msg));
+                        }
+                    }
+                    NetMessage::EngineMessage(engine_msg) => {
+                        events.push(AnalyzerEvent::EngineMessage(engine_msg));
+                    }
+                }
+            }
+        }
+    } else {
+        events.push(AnalyzerEvent::TimeUpdate(frame.time));
+    }
+
+    events
 }
 
 pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {

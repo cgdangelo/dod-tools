@@ -55,6 +55,8 @@ impl Display for Report<'_> {
         writeln!(f, "- Demo protocol: {}", demo_protocol)?;
         let network_protocol = &self.demo.header.network_protocol;
         writeln!(f, "- Network protocol: {}", &network_protocol)?;
+        let app_version = env!("CARGO_PKG_VERSION");
+        writeln!(f, "- Analyzer version: {}", app_version)?;
         let report_created_at = format_rfc3339_seconds(SystemTime::now());
         writeln!(f, "- Report created at: {}", report_created_at)?;
 

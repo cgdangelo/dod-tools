@@ -48,15 +48,15 @@ impl Display for Report<'_> {
         writeln!(f, "# Summary: {} on {}\n", file_name, map_name)?;
 
         let file_path = &self.file_info.path.to_str().unwrap();
-        writeln!(f, "- File name: `{}`", file_path)?;
+        writeln!(f, "- File path: `{}`", file_path)?;
         let file_created_at = format_rfc3339_seconds(*self.file_info.created_at);
         writeln!(f, "- File created at: {}", file_created_at)?;
-        let report_created_at = format_rfc3339_seconds(SystemTime::now());
-        writeln!(f, "- Report created at: {}", report_created_at)?;
         let demo_protocol = &self.demo.header.demo_protocol;
         writeln!(f, "- Demo protocol: {}", demo_protocol)?;
         let network_protocol = &self.demo.header.network_protocol;
         writeln!(f, "- Network protocol: {}", &network_protocol)?;
+        let report_created_at = format_rfc3339_seconds(SystemTime::now());
+        writeln!(f, "- Report created at: {}", report_created_at)?;
 
         writeln!(f)?;
 

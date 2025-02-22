@@ -56,7 +56,7 @@ dod-tools.exe --cli "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-fil
 For quick analysis of a single file, run the program and capture the output to your clipboard. On Windows, for example:
 
 ```text
-dod-tools.exe "C:\path\to\demo-file.dem" | clip
+dod-tools.exe --cli "C:\path\to\demo-file.dem" | clip
 ```
 
 The report contents will be in your clipboard now. Paste this into something that can render Markdown text as HTML (see

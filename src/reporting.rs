@@ -9,14 +9,14 @@ use std::time::{Duration, SystemTime};
 use tabled::{builder::Builder, settings::Style};
 
 pub struct FileInfo<'a> {
-    pub created_at: &'a SystemTime,
+    pub created_at: SystemTime,
     pub path: &'a PathBuf,
 }
 
 pub struct Report<'a> {
-    pub analysis: &'a AnalyzerState,
+    pub analysis: AnalyzerState,
     pub file_info: FileInfo<'a>,
-    pub demo: &'a Demo,
+    pub demo: Demo,
 }
 
 impl Display for Report<'_> {
@@ -49,7 +49,7 @@ impl Display for Report<'_> {
 
         let file_path = &self.file_info.path.to_str().unwrap();
         writeln!(f, "- File path: `{}`", file_path)?;
-        let file_created_at = format_rfc3339_seconds(*self.file_info.created_at);
+        let file_created_at = format_rfc3339_seconds(self.file_info.created_at);
         writeln!(f, "- File created at: {}", file_created_at)?;
         let demo_protocol = &self.demo.header.demo_protocol;
         writeln!(f, "- Demo protocol: {}", demo_protocol)?;

@@ -3,6 +3,7 @@ use crate::analysis::{
     use_team_score_updates, use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent,
     AnalyzerState,
 };
+use crate::gui::Gui;
 use crate::reporting::{FileInfo, Report};
 use dem::open_demo;
 use filetime::FileTime;
@@ -14,19 +15,44 @@ use std::time::{Duration, SystemTime};
 mod analysis;
 #[allow(dead_code)]
 mod dod;
+mod gui;
 mod reporting;
 
 fn main() {
-    let os_args = args().collect::<Vec<_>>();
+    let args = args().collect::<Vec<_>>();
 
-    for path_str in &os_args[1..] {
-        run_analyzer(path_str);
+    if args.contains(&"--cli".to_string()) {
+        run_cli(args)
+    } else {
+        run_gui()
     }
 }
 
-fn run_analyzer(path_str: &str) {
-    let demo_path = PathBuf::from(path_str);
-    let demo = open_demo(&demo_path).unwrap();
+fn run_cli(args: Vec<String>) {
+    for arg in &args[1..] {
+        if arg == "--cli" {
+            continue;
+        }
+
+        let demo_path = PathBuf::from(arg);
+        let report = run_analyzer(&demo_path);
+
+        println!("{}", report);
+    }
+}
+
+#[tokio::main]
+async fn run_gui() {
+    eframe::run_native(
+        env!("CARGO_PKG_NAME"),
+        eframe::NativeOptions::default(),
+        Box::new(|_cc| Ok(Box::<Gui>::default())),
+    )
+    .expect("Could not run the GUI");
+}
+
+fn run_analyzer(demo_path: &PathBuf) -> Report {
+    let demo = open_demo(demo_path).unwrap();
 
     let analysis = demo
         .directory
@@ -54,7 +80,7 @@ fn run_analyzer(path_str: &str) {
             state
         });
 
-    let created_at = fs::metadata(&demo_path)
+    let created_at = fs::metadata(demo_path)
         .map_err(|_| ())
         .and_then(|metadata| FileTime::from_creation_time(&metadata).ok_or(()))
         .map(|file_time| {
@@ -65,14 +91,12 @@ fn run_analyzer(path_str: &str) {
         })
         .unwrap();
 
-    let reporter = Report {
+    Report {
         file_info: FileInfo {
-            created_at: &created_at,
-            path: &demo_path,
+            created_at,
+            path: demo_path,
         },
-        demo: &demo,
-        analysis: &analysis,
-    };
-
-    println!("{}", reporter);
+        demo,
+        analysis,
+    }
 }

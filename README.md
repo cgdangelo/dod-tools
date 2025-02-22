@@ -1,8 +1,10 @@
 # dod-tools
 
-A command-line utility for analyzing Day of Defeat (GoldSrc) demo files.
+A utility for analyzing Day of Defeat (GoldSrc) demo files.
 
-[Example](assets/example_report.md)
+![](./assets/gui.png)
+
+[Example text output](assets/example_report.md)
 
 ## Installation
 
@@ -19,19 +21,27 @@ Download the binary for your platform from the [latest release](https://github.c
 >
 > Demos recorded by HLTV clients or legacy versions of DoD (1.0, 1.1, 1.2) have limited support.
 
-Run the program and provide a file path to a demo as an argument:
+### GUI mode
+
+Run the program and click the button to open 1 or more files, or drag-and-drop 1 or more files onto the main window.
+
+Reports will be displayed in the window.
+
+### CLI mode
+
+Run the program with the `--cli` flag and provide a file path to a demo as an argument:
 
 ```text
-dod-tools.exe "C:\path\to\demo-file.dem"
+dod-tools.exe --cli "C:\path\to\demo-file.dem"
 ```
 
 Multiple files can be provided at once:
 
 ```text
-dod-tools.exe "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-file.dem" > reports.md
+dod-tools.exe --cli "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-file.dem" > reports.md
 ```
 
-### Example 1: Viewing with a Markdown renderer (recommended)
+#### Example 1: Viewing with a Markdown renderer (recommended)
 
 > [!TIP]
 >
@@ -52,13 +62,13 @@ dod-tools.exe "C:\path\to\demo-file.dem" | clip
 The report contents will be in your clipboard now. Paste this into something that can render Markdown text as HTML (see
 above).
 
-### Example 2: Aggregating results from a list of files
+#### Example 2: Aggregating results from a list of files
 
 If you have a list of files in a directory you want to analyze at once, run the program on each file and aggregate the
 results into a single file.
 
 ```text
-Get-ChildItem "C:\path\to\demos\*.dem" | ForEach-Object { & dod-tools.exe $_.FullName >> reports.md }
+Get-ChildItem "C:\path\to\demos\*.dem" | ForEach-Object { & dod-tools.exe --cli $_.FullName >> reports.md }
 ```
 
 A `reports.md` file will be created with sections for each of the files.

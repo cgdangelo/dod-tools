@@ -69,7 +69,7 @@ impl Display for Report<'_> {
         for player in &ordered_players {
             table_builder.push_record([
                 player.player_global_id.0.to_string(),
-                player.name.to_string(),
+                md_escape(&player.name),
                 match &player.team {
                     None => "Unknown",
                     Some(Team::Allies) => "Allies",
@@ -113,7 +113,7 @@ impl Display for Report<'_> {
         writeln!(f, "## Player Summaries\n")?;
 
         for player in &ordered_players {
-            writeln!(f, "### {}\n", player.name)?;
+            writeln!(f, "### {}\n", md_escape(&player.name))?;
 
             // Kills per weapon section
             writeln!(f, "#### Weapon Breakdown\n")?;
@@ -175,4 +175,12 @@ impl Display for Report<'_> {
 
         Ok(())
     }
+}
+
+fn md_escape(str: &str) -> String {
+    str.replace("|", r"\|")
+        .replace("_", r"\_")
+        .replace("*", r"\*")
+        .replace("[", r"\[")
+        .replace("]", r"\]")
 }

@@ -1,34 +1,43 @@
+use crate::analysis::{Player, PlayerGlobalId};
+use crate::dod::Team;
+use crate::reporting::Report;
 use crate::run_analyzer;
 use eframe::Frame;
-use egui::Context;
-use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
-use egui_file_dialog::FileDialog;
+use egui::{Align, Layout};
+use egui::{Context, Grid, TextStyle, Ui, Window};
+use egui_extras::{Column, TableBody, TableBuilder};
+use humantime::{format_duration, format_rfc3339_seconds};
+use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::fmt::Write;
-use std::fs;
 use std::path::PathBuf;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc};
+use std::sync::mpsc;
+use std::time::Duration;
 
 pub struct Gui {
     batch_progress: Option<(usize, usize)>,
-    demo_picker: FileDialog,
-    markdown_cache: CommonMarkCache,
-    output_picker: FileDialog,
-    textbox_contents: Option<String>,
-    rx: Receiver<GuiMessage>,
-    tx: Sender<GuiMessage>,
+    player_highlight: PlayerHighlighting,
+    reports: Vec<Report>,
+
+    rx: mpsc::Receiver<GuiMessage>,
+    tx: mpsc::Sender<GuiMessage>,
+}
+
+#[derive(Default)]
+struct PlayerHighlighting {
+    highlighted: HashSet<PlayerGlobalId>,
 }
 
 enum GuiMessage {
     Idle,
 
     AnalyzerStart {
-        files_count: usize,
+        files: usize,
     },
 
     AnalyzerProgress {
         progress: (usize, usize),
-        report: String,
+        report: Box<Report>,
     },
 }
 
@@ -38,15 +47,8 @@ impl Default for Gui {
 
         Self {
             batch_progress: None,
-            demo_picker: FileDialog::new()
-                .add_file_filter(
-                    "Demo files (*.dem)",
-                    Arc::new(|file| file.extension().is_some_and(|ext| ext == "dem")),
-                )
-                .default_file_filter("Demo files (*.dem)"),
-            output_picker: FileDialog::new(),
-            markdown_cache: CommonMarkCache::default(),
-            textbox_contents: None,
+            player_highlight: PlayerHighlighting::default(),
+            reports: vec![],
             rx,
             tx,
         }
@@ -59,99 +61,379 @@ impl eframe::App for Gui {
             Ok(GuiMessage::Idle) => {
                 self.batch_progress = None;
             }
-            Ok(GuiMessage::AnalyzerStart { files_count }) => {
-                self.textbox_contents = None;
-                self.batch_progress = Some((0, files_count));
+            Ok(GuiMessage::AnalyzerStart { files }) => {
+                self.batch_progress = Some((0, files));
             }
             Ok(GuiMessage::AnalyzerProgress { progress, report }) => {
                 self.batch_progress = Some(progress);
-                self.textbox_contents = if let Some(t) = &self.textbox_contents {
-                    Some(format!("{}\n{}", t, report))
-                } else {
-                    Some(report)
-                };
+                self.reports.push(*report);
             }
             _ => {}
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ui.button("Open file(s)").clicked() {
-                    self.demo_picker.pick_multiple();
-                }
+        ctx.input(|i| {
+            if !i.raw.dropped_files.is_empty() {
+                let demo_paths = i
+                    .raw
+                    .dropped_files
+                    .iter()
+                    .filter_map(|dropped_file| dropped_file.path.clone())
+                    .collect::<Vec<PathBuf>>();
 
-                if let Some((current, total)) = &self.batch_progress {
-                    ui.label(format!("Finished: {} of {}", current, total));
-                }
-
-                if let Some(text) = &self.textbox_contents {
-                    if ui.button("Copy to Clipboard").clicked() {
-                        ctx.copy_text(text.clone());
-                    }
-
-                    if ui.button("Save File").clicked() {
-                        self.output_picker.save_file();
-                    }
-                }
-            });
-
-            self.demo_picker.update(ctx);
-            self.output_picker.update(ctx);
-
-            let analyze_files = |demo_paths: Vec<PathBuf>| {
                 analyze_files_async(ctx.clone(), self.tx.clone(), demo_paths);
-            };
-
-            if let Some(demo_paths) = self.demo_picker.take_picked_multiple() {
-                analyze_files(demo_paths);
-            }
-
-            ctx.input(|i| {
-                if !i.raw.dropped_files.is_empty() {
-                    let demo_paths = i
-                        .raw
-                        .dropped_files
-                        .iter()
-                        .filter_map(|dropped_file| dropped_file.path.clone())
-                        .collect::<Vec<PathBuf>>();
-
-                    analyze_files(demo_paths);
-                }
-            });
-
-            if let (Some(text), Some(output_path)) =
-                (&self.textbox_contents, self.output_picker.take_picked())
-            {
-                let _ = fs::write(output_path, text);
-            }
-
-            if let Some(ref mut report_text) = &mut self.textbox_contents {
-                CommonMarkViewer::new().show_scrollable(
-                    &report_text,
-                    ui,
-                    &mut self.markdown_cache,
-                    report_text,
-                );
             }
         });
+
+        for r in &self.reports {
+            let title = format!("{} ({})", &r.file_info.name, &r.demo_info.map_name);
+
+            Window::new(title)
+                .min_height(600.)
+                .open(&mut true)
+                .show(ctx, |ui| {
+                    report_ui(r, &mut self.player_highlight, ui);
+                });
+        }
     }
 }
 
-fn analyze_files_async(ctx: Context, tx: Sender<GuiMessage>, paths: Vec<PathBuf>) {
-    tokio::spawn(async move {
-        tx.send(GuiMessage::AnalyzerStart {
-            files_count: paths.len(),
+const TABLE_ROW_HEIGHT: f32 = 18.;
+
+fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
+    header_ui(r, ui);
+
+    ui.separator();
+
+    scoreboard_ui(r, player_highlighting, ui);
+
+    ui.separator();
+
+    player_summaries_ui(r, player_highlighting, ui);
+}
+
+fn header_ui(r: &Report, ui: &mut Ui) {
+    egui::CollapsingHeader::new("Summary")
+        .default_open(true)
+        .show(ui, |ui| {
+            Grid::new("header").show(ui, |ui| {
+                ui.strong("File path");
+                ui.monospace(&r.file_info.path);
+                ui.end_row();
+
+                ui.strong("File created at");
+                ui.label(format_rfc3339_seconds(r.file_info.created_at).to_string());
+                ui.end_row();
+
+                ui.strong("Demo protocol");
+                ui.label(r.demo_info.demo_protocol.to_string());
+                ui.end_row();
+
+                ui.strong("Network protocol");
+                ui.label(r.demo_info.network_protocol.to_string());
+                ui.end_row();
+
+                ui.strong("Analyzer version");
+                ui.label(env!("CARGO_PKG_VERSION"));
+                ui.end_row();
+            });
+        });
+}
+
+fn scoreboard_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
+    let match_result_fragment = match (
+        r.analysis.team_scores.get(&Team::Allies),
+        r.analysis.team_scores.get(&Team::Axis),
+    ) {
+        (Some(allies_score), Some(axis_score)) => {
+            format!(
+                "Allies ({}) {} Axis ({})",
+                allies_score,
+                if allies_score > axis_score { ">" } else { "<" },
+                axis_score
+            )
+        }
+        _ => String::new(),
+    };
+
+    egui::CollapsingHeader::new(format!("Scoreboard: {}", match_result_fragment))
+        .default_open(true)
+        .show(ui, |ui| {
+            let header_row_size = TextStyle::Heading.resolve(ui.style()).size;
+            let table = TableBuilder::new(ui)
+                .striped(true)
+                .cell_layout(Layout::left_to_right(Align::Center))
+                .max_scroll_height(260.)
+                .column(Column::auto())
+                .column(Column::auto_with_initial_suggestion(150.))
+                .columns(Column::auto(), 6);
+
+            table
+                .header(header_row_size, |mut header| {
+                    let columns = [
+                        "", "ID", "Name", "Team", "Class", "Score", "Kills", "Deaths",
+                    ];
+
+                    for column in columns {
+                        header.col(|ui| {
+                            ui.strong(column);
+                        });
+                    }
+                })
+                .body(|ref mut body| {
+                    // Players sorted by team then kills
+                    let mut players = Vec::from_iter(&r.analysis.players);
+
+                    players.sort_by(|left, right| match (&left.team, &right.team) {
+                        (Some(left_team), Some(right_team)) if left_team == right_team => {
+                            left.stats.0.cmp(&right.stats.0).reverse()
+                        }
+
+                        (Some(Team::Allies), _) => Ordering::Less,
+                        (Some(Team::Axis), Some(Team::Spectators)) => Ordering::Less,
+                        (Some(Team::Spectators) | None, _) => Ordering::Greater,
+
+                        _ => Ordering::Equal,
+                    });
+
+                    for p in players {
+                        scoreboard_row_ui(p, player_highlighting, body);
+                    }
+                });
+        });
+}
+
+fn scoreboard_row_ui(
+    p: &Player,
+    player_highlighting: &mut PlayerHighlighting,
+    body: &mut TableBody,
+) {
+    let row_label = |ui: &mut Ui, str: &str| {
+        ui.add(egui::Label::new(str).extend());
+    };
+
+    body.row(TABLE_ROW_HEIGHT, |mut row| {
+        let mut is_checked = player_highlighting
+            .highlighted
+            .contains(&p.player_global_id);
+
+        row.set_selected(is_checked);
+
+        row.col(|ui| {
+            if ui.checkbox(&mut is_checked, "").changed() {
+                if is_checked {
+                    player_highlighting
+                        .highlighted
+                        .insert(p.player_global_id.clone());
+                } else {
+                    player_highlighting.highlighted.remove(&p.player_global_id);
+                }
+            }
+        });
+
+        row.col(|ui| {
+            let profile_url = format!(
+                "https://steamcommunity.com/profiles/{}",
+                &p.player_global_id.0
+            );
+
+            ui.hyperlink_to(&p.player_global_id.0, profile_url);
+        });
+
+        row.col(|ui| {
+            row_label(ui, &p.name);
+        });
+
+        row.col(|ui| {
+            ui.label(match &p.team {
+                None => "Unknown",
+                Some(Team::Allies) => "Allies",
+                Some(Team::Axis) => "Axis",
+                Some(Team::Spectators) => "Spectators",
+            });
+        });
+
+        row.col(|ui| {
+            ui.label(match &p.class {
+                None => "Unknown".to_string(),
+                Some(x) => format!("{:?}", x),
+            });
+        });
+
+        row.col(|ui| {
+            ui.label(p.stats.0.to_string());
+        });
+
+        row.col(|ui| {
+            ui.label(p.stats.1.to_string());
+        });
+
+        row.col(|ui| {
+            ui.label(p.stats.2.to_string());
+        });
+    });
+}
+
+fn player_summaries_ui(r: &Report, player_highlighting: &PlayerHighlighting, ui: &mut Ui) {
+    let mut players = Vec::from_iter(&r.analysis.players);
+
+    players.sort_by(|l, r| l.name.cmp(&r.name));
+
+    egui::ScrollArea::vertical()
+        .auto_shrink(false)
+        .min_scrolled_height(260.)
+        .show(ui, |ui| {
+            for p in players {
+                if !player_highlighting.highlighted.is_empty()
+                    && !player_highlighting
+                        .highlighted
+                        .contains(&p.player_global_id)
+                {
+                    continue;
+                }
+
+                egui::CollapsingHeader::new(&p.name)
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        weapon_breakdown_ui(p, ui);
+                        kill_streaks_ui(p, ui);
+                    });
+            }
+        });
+}
+
+fn weapon_breakdown_ui(p: &Player, ui: &mut Ui) {
+    egui::CollapsingHeader::new("Weapon Breakdown")
+        .default_open(false)
+        .show(ui, |ui| {
+            weapon_breakdown_table_ui(p, ui);
+        });
+}
+
+fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
+    let mut weapon_breakdown = Vec::from_iter(&p.weapon_breakdown);
+
+    weapon_breakdown.sort_by(|(_, l), (_, r)| l.cmp(r).reverse());
+
+    TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(Layout::left_to_right(Align::Center))
+        .columns(Column::auto(), 3)
+        .header(TABLE_ROW_HEIGHT, |mut row| {
+            row.col(|ui| {
+                ui.strong("Weapon");
+            });
+            row.col(|ui| {
+                ui.strong("Kills");
+            });
+            row.col(|ui| {
+                ui.strong("Team Kills");
+            });
         })
-        .unwrap();
+        .body(|mut body| {
+            for (weapon, (kills, teamkills)) in weapon_breakdown {
+                body.row(TABLE_ROW_HEIGHT, |mut row| {
+                    row.col(|ui| {
+                        ui.label(format!("{:?}", weapon));
+                    });
+
+                    row.col(|ui| {
+                        ui.label(kills.to_string());
+                    });
+
+                    row.col(|ui| {
+                        ui.label(teamkills.to_string());
+                    });
+                });
+            }
+        });
+}
+
+fn kill_streaks_ui(p: &Player, ui: &mut Ui) {
+    egui::CollapsingHeader::new("Kill Streaks")
+        .default_open(false)
+        .show(ui, |ui| {
+            kill_streaks_table_ui(p, ui);
+        });
+}
+
+fn kill_streaks_table_ui(p: &Player, ui: &mut Ui) {
+    TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(Layout::left_to_right(Align::Center))
+        .columns(Column::auto(), 5)
+        .header(TABLE_ROW_HEIGHT, |mut row| {
+            row.col(|ui| {
+                ui.strong("Wave");
+            });
+            row.col(|ui| {
+                ui.strong("Total Kills");
+            });
+            row.col(|ui| {
+                ui.strong("Start Time");
+            });
+            row.col(|ui| {
+                ui.strong("Duration");
+            });
+            row.col(|ui| {
+                ui.strong("Weapons Used");
+            });
+        })
+        .body(|mut body| {
+            for (wave, streak) in p.kill_streaks.iter().enumerate() {
+                if let (Some((start, _)), Some((end, _))) =
+                    (streak.kills.first(), streak.kills.last())
+                {
+                    body.row(TABLE_ROW_HEIGHT, |mut row| {
+                        row.col(|ui| {
+                            ui.label((wave + 1).to_string());
+                        });
+
+                        row.col(|ui| {
+                            ui.label(streak.kills.len().to_string());
+                        });
+
+                        row.col(|ui| {
+                            let start = Duration::new(start.offset.as_secs(), 0);
+
+                            ui.label(format_duration(start).to_string());
+                        });
+
+                        row.col(|ui| {
+                            let duration = Duration::new((end.offset - start.offset).as_secs(), 0);
+
+                            ui.label(format_duration(duration).to_string());
+                        });
+
+                        row.col(|ui| {
+                            let weapons = streak
+                                .kills
+                                .iter()
+                                .map(|(_, weapon)| format!("{:?}", weapon))
+                                .collect::<Vec<_>>()
+                                .join(", ");
+
+                            ui.label(weapons);
+                        });
+                    });
+                }
+            }
+        });
+}
+
+fn analyze_files_async(ctx: Context, tx: mpsc::Sender<GuiMessage>, paths: Vec<PathBuf>) {
+    tokio::spawn(async move {
+        tx.send(GuiMessage::AnalyzerStart { files: paths.len() })
+            .unwrap();
 
         for (index, file) in paths.iter().enumerate() {
-            let mut report = String::new();
+            let report = run_analyzer(file);
+            let mut report_text = String::new();
 
-            let _ = write!(report, "{}", run_analyzer(file));
+            write!(report_text, "{}", report).unwrap();
 
             tx.send(GuiMessage::AnalyzerProgress {
                 progress: (index + 1, paths.len()),
-                report,
+                report: Box::new(report),
             })
             .unwrap();
 

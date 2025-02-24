@@ -4,7 +4,7 @@ use crate::analysis::{
     AnalyzerState,
 };
 use crate::gui::Gui;
-use crate::reporting::{FileInfo, Report};
+use crate::reporting::{DemoInfo, FileInfo, Report};
 use dem::open_demo;
 use filetime::FileTime;
 use std::env::args;
@@ -91,12 +91,28 @@ fn run_analyzer(demo_path: &PathBuf) -> Report {
         })
         .unwrap();
 
+    let file_info = FileInfo {
+        created_at,
+        name: demo_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(String::from)
+            .unwrap(),
+
+        path: demo_path.to_str().map(String::from).unwrap(),
+    };
+
+    let map_name = String::from_utf8(demo.header.map_name).unwrap();
+    let map_name = map_name.trim_end_matches('\x00').to_string();
+    let demo_info = DemoInfo {
+        demo_protocol: demo.header.demo_protocol,
+        map_name,
+        network_protocol: demo.header.network_protocol,
+    };
+
     Report {
-        file_info: FileInfo {
-            created_at,
-            path: demo_path,
-        },
-        demo,
         analysis,
+        file_info,
+        demo_info,
     }
 }

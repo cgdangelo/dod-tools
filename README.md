@@ -23,9 +23,9 @@ Download the binary for your platform from the [latest release](https://github.c
 
 ### GUI mode
 
-Run the program and click the button to open 1 or more files, or drag-and-drop 1 or more files onto the main window.
+Run the program and drag-and-drop 1 or more files onto the main window. Each file will open a report window.
 
-Reports will be displayed in the window.
+Click the checkbox next to a player in the scoreboard to filter for their results across all open reports.
 
 ### CLI mode
 

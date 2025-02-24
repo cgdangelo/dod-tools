@@ -1,25 +1,30 @@
 use crate::analysis::AnalyzerState;
 use crate::dod::Team;
-use dem::types::Demo;
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 use tabled::{builder::Builder, settings::Style};
 
-pub struct FileInfo<'a> {
+pub struct DemoInfo {
+    pub demo_protocol: i32,
+    pub network_protocol: i32,
+    pub map_name: String,
+}
+
+pub struct FileInfo {
     pub created_at: SystemTime,
-    pub path: &'a PathBuf,
+    pub name: String,
+    pub path: String,
 }
 
-pub struct Report<'a> {
+pub struct Report {
     pub analysis: AnalyzerState,
-    pub file_info: FileInfo<'a>,
-    pub demo: Demo,
+    pub demo_info: DemoInfo,
+    pub file_info: FileInfo,
 }
 
-impl Display for Report<'_> {
+impl Display for Report {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Players sorted by team then kills
         let mut ordered_players = Vec::from_iter(&self.analysis.players);
@@ -37,24 +42,18 @@ impl Display for Report<'_> {
         });
 
         // Header section
-        let file_name = &self
-            .file_info
-            .path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap();
-        let map_name = String::from_utf8(self.demo.header.map_name.to_vec()).unwrap();
-        let map_name = map_name.trim_end_matches('\x00');
+        let file_name = &self.file_info.name;
+        let map_name = &self.demo_info.map_name;
         writeln!(f, "# Summary: {} on {}\n", file_name, map_name)?;
 
-        let file_path = &self.file_info.path.to_str().unwrap();
+        let file_path = &self.file_info.path;
         writeln!(f, "- File path: `{}`", file_path)?;
         let file_created_at = format_rfc3339_seconds(self.file_info.created_at);
         writeln!(f, "- File created at: {}", file_created_at)?;
-        let demo_protocol = &self.demo.header.demo_protocol;
+        let demo_protocol = &self.demo_info.demo_protocol;
         writeln!(f, "- Demo protocol: {}", demo_protocol)?;
-        let network_protocol = &self.demo.header.network_protocol;
-        writeln!(f, "- Network protocol: {}", &network_protocol)?;
+        let network_protocol = &self.demo_info.network_protocol;
+        writeln!(f, "- Network protocol: {}", network_protocol)?;
         let app_version = env!("CARGO_PKG_VERSION");
         writeln!(f, "- Analyzer version: {}", app_version)?;
         let report_created_at = format_rfc3339_seconds(SystemTime::now());
@@ -119,10 +118,14 @@ impl Display for Report<'_> {
             writeln!(f, "#### Weapon Breakdown\n")?;
 
             let mut table_builder = Builder::default();
-            table_builder.push_record(["Weapon", "Kills"]);
+            table_builder.push_record(["Weapon", "Kills", "Team Kills"]);
 
-            for (weapon, kills) in player.weapon_breakdown.iter() {
-                table_builder.push_record([format!("{:?}", weapon), kills.to_string()]);
+            for (weapon, (kills, teamkills)) in player.weapon_breakdown.iter() {
+                table_builder.push_record([
+                    format!("{:?}", weapon),
+                    kills.to_string(),
+                    teamkills.to_string(),
+                ]);
             }
 
             let mut table = table_builder.build();

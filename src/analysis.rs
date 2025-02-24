@@ -1,6 +1,8 @@
 use crate::dod::{Class, Message, Team, Weapon};
 use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
 use std::collections::HashMap;
+use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::str::from_utf8;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
@@ -24,6 +26,12 @@ impl Default for GameTime {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct PlayerGlobalId(pub String);
 
+impl Display for PlayerGlobalId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
 /// Represents whether a [Player] is connected to the server.
 #[derive(Debug)]
 pub enum ConnectionStatus {
@@ -45,13 +53,27 @@ pub struct Player {
     pub class: Option<Class>,
     pub stats: (i32, i32, i32),
     pub kill_streaks: Vec<KillStreak>,
-    pub weapon_breakdown: HashMap<Weapon, i32>,
+    pub weapon_breakdown: HashMap<Weapon, (u32, u32)>,
 }
 
 #[derive(Debug)]
 pub struct KillStreak {
     pub kills: Vec<(GameTime, Weapon)>,
 }
+
+impl Hash for Player {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.player_global_id.hash(state)
+    }
+}
+
+impl PartialEq for Player {
+    fn eq(&self, other: &Self) -> bool {
+        self.player_global_id == other.player_global_id
+    }
+}
+
+impl Eq for Player {}
 
 impl Player {
     fn new(global_id: PlayerGlobalId) -> Self {
@@ -335,19 +357,19 @@ pub fn use_weapon_breakdown_updates(state: &mut AnalyzerState, event: &AnalyzerE
             _ => false,
         };
 
-        if is_teamkill {
-            return;
-        }
-
         let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
 
         if let Some(killer) = killer {
-            let kills_by_weapon = killer
+            let (kills, teamkills) = killer
                 .weapon_breakdown
                 .entry(death_msg.weapon.clone())
-                .or_insert(0);
+                .or_insert((0, 0));
 
-            *kills_by_weapon += 1;
+            if is_teamkill {
+                *teamkills += 1;
+            } else {
+                *kills += 1;
+            }
         }
     }
 }

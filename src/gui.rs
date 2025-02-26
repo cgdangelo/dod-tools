@@ -16,6 +16,7 @@ use std::time::Duration;
 
 pub struct Gui {
     batch_progress: Option<(usize, usize)>,
+    open_reports: HashSet<String>,
     player_highlight: PlayerHighlighting,
     reports: Vec<Report>,
 
@@ -46,9 +47,10 @@ impl Default for Gui {
         let (tx, rx) = mpsc::channel();
 
         Self {
-            batch_progress: None,
-            player_highlight: PlayerHighlighting::default(),
-            reports: vec![],
+            batch_progress: Default::default(),
+            player_highlight: Default::default(),
+            open_reports: Default::default(),
+            reports: Default::default(),
             rx,
             tx,
         }
@@ -66,6 +68,10 @@ impl eframe::App for Gui {
             }
             Ok(GuiMessage::AnalyzerProgress { progress, report }) => {
                 self.batch_progress = Some(progress);
+
+                let title = get_report_title(&report);
+                self.open_reports.insert(title);
+
                 self.reports.push(*report);
             }
             _ => {}
@@ -85,19 +91,28 @@ impl eframe::App for Gui {
         });
 
         for r in &self.reports {
-            let title = format!("{} ({})", &r.file_info.name, &r.demo_info.map_name);
+            let title = get_report_title(r);
+            let mut is_open = self.open_reports.contains(&title);
 
-            Window::new(title)
+            Window::new(&title)
                 .min_height(600.)
-                .open(&mut true)
+                .open(&mut is_open)
                 .show(ctx, |ui| {
                     report_ui(r, &mut self.player_highlight, ui);
                 });
+
+            if !is_open {
+                self.open_reports.remove(&title);
+            }
         }
     }
 }
 
 const TABLE_ROW_HEIGHT: f32 = 18.;
+
+fn get_report_title(r: &Report) -> String {
+    format!("{} ({})", &r.file_info.name, &r.demo_info.map_name)
+}
 
 fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
     header_ui(r, ui);

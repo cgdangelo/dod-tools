@@ -2,20 +2,23 @@ use crate::analysis::{Player, PlayerGlobalId};
 use crate::dod::Team;
 use crate::reporting::Report;
 use crate::run_analyzer;
-use eframe::Frame;
-use egui::{Align, Layout};
-use egui::{Context, Grid, TextStyle, Ui, Window};
+use egui::{
+    panel::Side, Align, CentralPanel, Context, Frame, Grid, Layout, ScrollArea, SidePanel,
+    TextStyle, TopBottomPanel, Ui, Window,
+};
 use egui_extras::{Column, TableBody, TableBuilder};
+use egui_file_dialog::FileDialog;
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::path::PathBuf;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
 pub struct Gui {
     batch_progress: Option<(usize, usize)>,
+    file_picker: FileDialog,
     open_reports: HashSet<String>,
     player_highlight: PlayerHighlighting,
     reports: Vec<Report>,
@@ -48,6 +51,14 @@ impl Default for Gui {
 
         Self {
             batch_progress: Default::default(),
+
+            file_picker: FileDialog::default()
+                .add_file_filter(
+                    "Demo files (*.dem)",
+                    Arc::new(|path| path.extension().unwrap_or_default() == "dem"),
+                )
+                .default_file_filter("Demo files (*.dem)"),
+
             player_highlight: Default::default(),
             open_reports: Default::default(),
             reports: Default::default(),
@@ -58,7 +69,7 @@ impl Default for Gui {
 }
 
 impl eframe::App for Gui {
-    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         match self.rx.try_recv() {
             Ok(GuiMessage::Idle) => {
                 self.batch_progress = None;
@@ -77,17 +88,89 @@ impl eframe::App for Gui {
             _ => {}
         }
 
-        ctx.input(|i| {
-            if !i.raw.dropped_files.is_empty() {
-                let demo_paths = i
-                    .raw
-                    .dropped_files
-                    .iter()
-                    .filter_map(|dropped_file| dropped_file.path.clone())
-                    .collect::<Vec<PathBuf>>();
+        self.file_picker.update(ctx);
 
+        ctx.input(|i| {
+            let from_picker = self.file_picker.take_picked_multiple().unwrap_or_default();
+
+            let from_drop = i
+                .raw
+                .dropped_files
+                .iter()
+                .filter_map(|dropped_file| dropped_file.path.clone())
+                .collect::<Vec<PathBuf>>();
+
+            let demo_paths = Vec::from_iter(from_picker.into_iter().chain(from_drop));
+
+            if !demo_paths.is_empty() {
                 analyze_files_async(ctx.clone(), self.tx.clone(), demo_paths);
             }
+        });
+
+        TopBottomPanel::top("controls")
+            .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
+            .show(ctx, |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                    ui.menu_button("File", |ui| {
+                        if ui.button("Open").clicked() {
+                            self.file_picker.pick_multiple();
+                        }
+
+                        ui.separator();
+
+                        if ui.button("Quit").clicked() {
+                            std::process::exit(0);
+                        }
+                    });
+
+                    if !self.reports.is_empty() {
+                        ui.separator();
+
+                        if ui.button("Clear Memory").clicked() {
+                            self.open_reports.clear();
+                            self.reports.clear();
+                        }
+                    }
+                });
+            });
+
+        SidePanel::new(Side::Left, "open_reports")
+            .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
+            .show(ctx, |ui| {
+                ScrollArea::vertical().show(ui, |ui| {
+                    ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
+                        let mut reports = self.reports.iter().peekable();
+
+                        while let Some(r) = reports.next() {
+                            let title = get_report_title(r);
+                            let mut is_open = self.open_reports.contains(&title);
+
+                            ui.toggle_value(&mut is_open, &title);
+
+                            if !is_open {
+                                self.open_reports.remove(&title);
+                            } else {
+                                self.open_reports.insert(title);
+                            }
+
+                            if reports.peek().is_some() {
+                                ui.separator();
+                            }
+                        }
+                    });
+                });
+            });
+
+        CentralPanel::default().show(ctx, |ui| {
+            ui.centered_and_justified(|ui| {
+                if self.reports.is_empty() {
+                    ui.heading("To start, drag and drop demos here or open with the File > Open menu.");
+                } else if self.open_reports.is_empty() {
+                    ui.heading(
+                        "You still have demos open. Select one from the list on the left to re-open an existing demo, or you can add a new demo.",
+                    );
+                }
+            });
         });
 
         for r in &self.reports {
@@ -103,6 +186,8 @@ impl eframe::App for Gui {
 
             if !is_open {
                 self.open_reports.remove(&title);
+            } else {
+                self.open_reports.insert(title);
             }
         }
     }
@@ -293,7 +378,7 @@ fn player_summaries_ui(r: &Report, player_highlighting: &PlayerHighlighting, ui:
 
     players.sort_by(|l, r| l.name.cmp(&r.name));
 
-    egui::ScrollArea::vertical()
+    ScrollArea::vertical()
         .auto_shrink(false)
         .min_scrolled_height(260.)
         .show(ui, |ui| {

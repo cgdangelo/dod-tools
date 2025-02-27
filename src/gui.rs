@@ -130,6 +130,10 @@ impl eframe::App for Gui {
                             self.open_reports.clear();
                             self.reports.clear();
                         }
+
+                        if ui.button("Organize Windows").clicked() {
+                            ctx.memory_mut(|mem| mem.reset_areas());
+                        }
                     }
                 });
             });
@@ -171,25 +175,25 @@ impl eframe::App for Gui {
                     );
                 }
             });
-        });
 
-        for r in &self.reports {
-            let title = get_report_title(r);
-            let mut is_open = self.open_reports.contains(&title);
+            for r in &self.reports {
+                let title = get_report_title(r);
+                let mut is_open = self.open_reports.contains(&title);
 
-            Window::new(&title)
-                .min_height(600.)
-                .open(&mut is_open)
-                .show(ctx, |ui| {
-                    report_ui(r, &mut self.player_highlight, ui);
-                });
+                Window::new(&title)
+                    .default_height(600.)
+                    .open(&mut is_open)
+                    .show(ctx, |ui| {
+                        report_ui(r, &mut self.player_highlight, ui);
+                    });
 
-            if !is_open {
-                self.open_reports.remove(&title);
-            } else {
-                self.open_reports.insert(title);
+                if !is_open {
+                    self.open_reports.remove(&title);
+                } else {
+                    self.open_reports.insert(title);
+                }
             }
-        }
+        });
     }
 }
 

@@ -1,10 +1,10 @@
-use crate::analysis::{Player, PlayerGlobalId};
+use crate::analysis::{Player, PlayerGlobalId, Round};
 use crate::dod::Team;
 use crate::reporting::Report;
 use crate::run_analyzer;
 use egui::{
-    panel::Side, Align, CentralPanel, Context, Frame, Grid, Layout, ScrollArea, SidePanel,
-    TextStyle, TopBottomPanel, Ui, Window,
+    panel::Side, Align, CentralPanel, CollapsingHeader, Context, Frame, Grid, Label, Layout,
+    ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
@@ -212,11 +212,15 @@ fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut 
 
     ui.separator();
 
+    rounds_ui(r, ui);
+
+    ui.separator();
+
     player_summaries_ui(r, player_highlighting, ui);
 }
 
 fn header_ui(r: &Report, ui: &mut Ui) {
-    egui::CollapsingHeader::new("Summary")
+    CollapsingHeader::new("Summary")
         .default_open(true)
         .show(ui, |ui| {
             Grid::new("header").show(ui, |ui| {
@@ -259,10 +263,9 @@ fn scoreboard_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &
         _ => String::new(),
     };
 
-    egui::CollapsingHeader::new(format!("Scoreboard: {}", match_result_fragment))
+    CollapsingHeader::new(format!("Scoreboard: {}", match_result_fragment))
         .default_open(true)
         .show(ui, |ui| {
-            let header_row_size = TextStyle::Heading.resolve(ui.style()).size;
             let table = TableBuilder::new(ui)
                 .striped(true)
                 .cell_layout(Layout::left_to_right(Align::Center))
@@ -272,7 +275,7 @@ fn scoreboard_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &
                 .columns(Column::auto(), 6);
 
             table
-                .header(header_row_size, |mut header| {
+                .header(TABLE_ROW_HEIGHT, |mut header| {
                     let columns = [
                         "", "ID", "Name", "Team", "Class", "Score", "Kills", "Deaths",
                     ];
@@ -312,7 +315,7 @@ fn scoreboard_row_ui(
     body: &mut TableBody,
 ) {
     let row_label = |ui: &mut Ui, str: &str| {
-        ui.add(egui::Label::new(str).extend());
+        ui.add(Label::new(str).extend());
     };
 
     body.row(TABLE_ROW_HEIGHT, |mut row| {
@@ -377,6 +380,83 @@ fn scoreboard_row_ui(
     });
 }
 
+fn rounds_ui(r: &Report, ui: &mut Ui) {
+    CollapsingHeader::new("Rounds").show(ui, |ui| {
+        let table = TableBuilder::new(ui)
+            .striped(true)
+            .cell_layout(Layout::left_to_right(Align::Center))
+            .columns(Column::auto(), 5);
+
+        table
+            .header(TABLE_ROW_HEIGHT, |mut ui| {
+                ui.col(|ui| {
+                    ui.strong("Round");
+                });
+                ui.col(|ui| {
+                    ui.strong("Start Time");
+                });
+                ui.col(|ui| {
+                    ui.strong("Duration");
+                });
+                ui.col(|ui| {
+                    ui.strong("Winner");
+                });
+                ui.col(|ui| {
+                    ui.strong("Kills by Winner");
+                });
+            })
+            .body(|mut ui| {
+                let mut rounds = r.analysis.rounds.iter().enumerate();
+
+                while let Some((
+                    i,
+                    Round::Completed {
+                        start_time,
+                        end_time,
+                        winner_stats,
+                    },
+                )) = rounds.next()
+                {
+                    ui.row(TABLE_ROW_HEIGHT, |mut row| {
+                        row.col(|ui| {
+                            ui.label((i + 1).to_string());
+                        });
+
+                        row.col(|ui| {
+                            let start_time = Duration::new(start_time.offset.as_secs(), 0);
+
+                            ui.label(format_duration(start_time).to_string());
+                        });
+
+                        row.col(|ui| {
+                            let duration =
+                                Duration::new((end_time.offset - start_time.offset).as_secs(), 0);
+
+                            ui.label(format_duration(duration).to_string());
+                        });
+
+                        if let Some((winner, kills)) = winner_stats {
+                            row.col(|ui| {
+                                ui.label(if matches!(winner, Team::Allies) {
+                                    "Allies"
+                                } else {
+                                    "Axis"
+                                });
+                            });
+
+                            row.col(|ui| {
+                                ui.label(kills.to_string());
+                            });
+                        } else {
+                            row.col(|_ui| {});
+                            row.col(|_ui| {});
+                        }
+                    });
+                }
+            });
+    });
+}
+
 fn player_summaries_ui(r: &Report, player_highlighting: &PlayerHighlighting, ui: &mut Ui) {
     let mut players = Vec::from_iter(&r.analysis.players);
 
@@ -395,7 +475,7 @@ fn player_summaries_ui(r: &Report, player_highlighting: &PlayerHighlighting, ui:
                     continue;
                 }
 
-                egui::CollapsingHeader::new(&p.name)
+                CollapsingHeader::new(&p.name)
                     .default_open(false)
                     .show(ui, |ui| {
                         weapon_breakdown_ui(p, ui);
@@ -406,7 +486,7 @@ fn player_summaries_ui(r: &Report, player_highlighting: &PlayerHighlighting, ui:
 }
 
 fn weapon_breakdown_ui(p: &Player, ui: &mut Ui) {
-    egui::CollapsingHeader::new("Weapon Breakdown")
+    CollapsingHeader::new("Weapon Breakdown")
         .default_open(false)
         .show(ui, |ui| {
             weapon_breakdown_table_ui(p, ui);
@@ -453,7 +533,7 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
 }
 
 fn kill_streaks_ui(p: &Player, ui: &mut Ui) {
-    egui::CollapsingHeader::new("Kill Streaks")
+    CollapsingHeader::new("Kill Streaks")
         .default_open(false)
         .show(ui, |ui| {
             kill_streaks_table_ui(p, ui);

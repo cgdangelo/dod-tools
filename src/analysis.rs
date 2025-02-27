@@ -1,4 +1,4 @@
-use crate::dod::{Class, Message, Team, Weapon};
+use crate::dod::{Class, Message, RoundState, Team, Weapon};
 use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
@@ -100,6 +100,21 @@ impl Player {
     }
 }
 
+#[derive(Debug)]
+pub enum Round {
+    Active {
+        allies_kills: u32,
+        axis_kills: u32,
+        start_time: GameTime,
+    },
+
+    Completed {
+        start_time: GameTime,
+        end_time: GameTime,
+        winner_stats: Option<(Team, u32)>,
+    },
+}
+
 pub enum AnalyzerEvent<'a> {
     Initialization,
     EngineMessage(&'a EngineMessage),
@@ -112,6 +127,7 @@ pub enum AnalyzerEvent<'a> {
 pub struct AnalyzerState {
     pub current_time: GameTime,
     pub players: Vec<Player>,
+    pub rounds: Vec<Round>,
     pub team_scores: HashMap<Team, i32>,
 }
 
@@ -382,5 +398,100 @@ pub fn use_team_score_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
             .or_insert(0);
 
         *team_entry = team_score.score as i32;
+    }
+}
+
+pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::Initialization = event {
+        // Make sure demo starts with an active round if recording started after match start
+        state.rounds.push(Round::Active {
+            allies_kills: 0,
+            axis_kills: 0,
+            start_time: state.current_time.clone(),
+        });
+    } else if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
+        let kill_info = match (
+            state.find_player_by_client_index(death_msg.killer_client_index),
+            state.find_player_by_client_index(death_msg.victim_client_index),
+        ) {
+            (Some(killer), Some(victim)) => Some((
+                killer.team.clone(),
+                killer.team.is_some() && killer.team == victim.team,
+            )),
+
+            _ => None,
+        };
+
+        if let (
+            Some(Round::Active {
+                allies_kills,
+                axis_kills,
+                ..
+            }),
+            Some((team, is_teamkill)),
+        ) = (state.rounds.last_mut(), kill_info)
+        {
+            if is_teamkill {
+                return;
+            }
+
+            if let Some(Team::Allies) = team {
+                *allies_kills += 1;
+            } else if let Some(Team::Axis) = team {
+                *axis_kills += 1;
+            }
+        };
+    } else if let AnalyzerEvent::UserMessage(Message::RoundState(round_state)) = event {
+        match round_state {
+            RoundState::Reset => {
+                // Infer first reset/normal as start of match
+                if state.rounds.len() == 1 {
+                    if let Some(Round::Active { .. }) = state.rounds.first() {
+                        state.rounds.clear();
+                    }
+                }
+
+                state.rounds.push(Round::Active {
+                    allies_kills: 0,
+                    axis_kills: 0,
+                    start_time: state.current_time.clone(),
+                });
+            }
+
+            RoundState::AlliesWin | RoundState::AxisWin => {
+                let current_round = state.rounds.pop();
+
+                if let Some(Round::Active {
+                    allies_kills,
+                    axis_kills,
+                    start_time,
+                }) = current_round
+                {
+                    let (winner, winner_kills) = if matches!(round_state, RoundState::AlliesWin) {
+                        (Team::Allies, allies_kills)
+                    } else {
+                        (Team::Axis, axis_kills)
+                    };
+
+                    state.rounds.push(Round::Completed {
+                        start_time,
+                        end_time: state.current_time.clone(),
+                        winner_stats: Some((winner, winner_kills)),
+                    });
+                }
+            }
+
+            _ => {}
+        }
+    } else if let AnalyzerEvent::Finalization = event {
+        let current_round = state.rounds.pop();
+
+        if let Some(Round::Active { start_time, .. }) = current_round {
+            state.rounds.push(Round::Completed {
+                start_time,
+                end_time: state.current_time.clone(),
+                winner_stats: None,
+            });
+        }
     }
 }

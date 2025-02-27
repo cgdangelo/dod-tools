@@ -1,7 +1,7 @@
 use crate::analysis::{
-    frame_to_events, use_kill_streak_updates, use_player_updates, use_scoreboard_updates,
-    use_team_score_updates, use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent,
-    AnalyzerState,
+    frame_to_events, use_kill_streak_updates, use_player_updates, use_rounds_updates,
+    use_scoreboard_updates, use_team_score_updates, use_timing_updates,
+    use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
 };
 use crate::gui::Gui;
 use crate::reporting::{DemoInfo, FileInfo, Report};
@@ -54,31 +54,25 @@ async fn run_gui() {
 fn run_analyzer(demo_path: &PathBuf) -> Report {
     let demo = open_demo(demo_path).unwrap();
 
-    let analysis = demo
-        .directory
-        .entries
-        .iter()
-        .flat_map(|entry| {
-            let mut events = entry
-                .frames
-                .iter()
-                .flat_map(frame_to_events)
-                .collect::<Vec<_>>();
+    let events = vec![AnalyzerEvent::Initialization].into_iter().chain(
+        demo.directory
+            .entries
+            .iter()
+            .flat_map(|entry| entry.frames.iter().flat_map(frame_to_events))
+            .chain(vec![AnalyzerEvent::Finalization]),
+    );
 
-            events.insert(0, AnalyzerEvent::Initialization);
-            events.push(AnalyzerEvent::Finalization);
-            events
-        })
-        .fold(AnalyzerState::default(), |mut state, ref event| {
-            use_timing_updates(&mut state, event);
-            use_player_updates(&mut state, event);
-            use_scoreboard_updates(&mut state, event);
-            use_kill_streak_updates(&mut state, event);
-            use_weapon_breakdown_updates(&mut state, event);
-            use_team_score_updates(&mut state, event);
+    let analysis = events.fold(AnalyzerState::default(), |mut state, ref event| {
+        use_timing_updates(&mut state, event);
+        use_player_updates(&mut state, event);
+        use_scoreboard_updates(&mut state, event);
+        use_kill_streak_updates(&mut state, event);
+        use_weapon_breakdown_updates(&mut state, event);
+        use_team_score_updates(&mut state, event);
+        use_rounds_updates(&mut state, event);
 
-            state
-        });
+        state
+    });
 
     let created_at = fs::metadata(demo_path)
         .map_err(|_| ())

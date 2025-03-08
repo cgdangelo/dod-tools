@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "dod-tools"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "dem",
  "eframe",

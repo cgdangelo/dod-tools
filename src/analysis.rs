@@ -98,6 +98,11 @@ impl Player {
         self.name = name.to_string();
         self
     }
+
+    fn with_team(&mut self, team: Option<Team>) -> &mut Self {
+        self.team = team;
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -192,11 +197,13 @@ pub fn frame_to_events(frame: &Frame) -> Vec<AnalyzerEvent> {
 
 pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     if let AnalyzerEvent::TimeUpdate(frame_time_offset) = event {
-        let mut next_time = state.current_time.clone();
+        if *frame_time_offset > 0. {
+            let mut next_time = state.current_time.clone();
 
-        next_time.offset = Duration::from_secs_f32(*frame_time_offset);
+            next_time.offset = Duration::from_secs_f32(*frame_time_offset);
 
-        state.current_time = next_time;
+            state.current_time = next_time;
+        }
     }
 }
 
@@ -284,13 +291,18 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
         }
 
         // Find the player from the message, and assign it to the slot
-        state
-            .find_player_by_global_id_mut(&player_global_id)
-            .unwrap()
-            .with_connection_status(ConnectionStatus::Connected {
-                client_id: svc_update_user_info.index,
-            })
-            .with_name(player_name);
+        if let Some(player) = state.find_player_by_global_id_mut(&player_global_id) {
+            player
+                .with_connection_status(ConnectionStatus::Connected {
+                    client_id: svc_update_user_info.index,
+                })
+                .with_name(player_name)
+                .with_team(
+                    fields
+                        .get("team")
+                        .and_then(|team| Team::try_from(*team).ok()),
+                );
+        }
     }
 }
 

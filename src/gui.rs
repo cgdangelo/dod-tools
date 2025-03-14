@@ -319,31 +319,24 @@ fn scoreboard_row_ui(
     };
 
     body.row(TABLE_ROW_HEIGHT, |mut row| {
-        let mut is_checked = player_highlighting
-            .highlighted
-            .contains(&p.player_global_id);
+        let mut is_checked = player_highlighting.highlighted.contains(&p.id);
 
         row.set_selected(is_checked);
 
         row.col(|ui| {
             if ui.checkbox(&mut is_checked, "").changed() {
                 if is_checked {
-                    player_highlighting
-                        .highlighted
-                        .insert(p.player_global_id.clone());
+                    player_highlighting.highlighted.insert(p.id.clone());
                 } else {
-                    player_highlighting.highlighted.remove(&p.player_global_id);
+                    player_highlighting.highlighted.remove(&p.id);
                 }
             }
         });
 
         row.col(|ui| {
-            let profile_url = format!(
-                "https://steamcommunity.com/profiles/{}",
-                &p.player_global_id.0
-            );
+            let profile_url = format!("https://steamcommunity.com/profiles/{}", &p.id.0);
 
-            ui.hyperlink_to(&p.player_global_id.0, profile_url);
+            ui.hyperlink_to(&p.id.0, profile_url);
         });
 
         row.col(|ui| {
@@ -468,9 +461,7 @@ fn player_summaries_ui(r: &Report, player_highlighting: &PlayerHighlighting, ui:
         .show(ui, |ui| {
             for p in players {
                 if !player_highlighting.highlighted.is_empty()
-                    && !player_highlighting
-                        .highlighted
-                        .contains(&p.player_global_id)
+                    && !player_highlighting.highlighted.contains(&p.id)
                 {
                     continue;
                 }

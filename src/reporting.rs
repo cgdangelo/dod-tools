@@ -70,7 +70,7 @@ impl Display for Report {
 
             for player in &ordered_players {
                 table_builder.push_record([
-                    player.player_global_id.0.to_string(),
+                    player.id.0.to_string(),
                     md_escape(&player.name),
                     match &player.team {
                         None => "Unknown",

@@ -46,9 +46,9 @@ pub enum ConnectionStatus {
 
 #[derive(Debug)]
 pub struct Player {
+    pub id: PlayerGlobalId,
     pub connection_status: ConnectionStatus,
     pub name: String,
-    pub player_global_id: PlayerGlobalId,
     pub team: Option<Team>,
     pub class: Option<Class>,
     pub stats: (i32, i32, i32),
@@ -63,24 +63,24 @@ pub struct KillStreak {
 
 impl Hash for Player {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.player_global_id.hash(state)
+        self.id.hash(state)
     }
 }
 
 impl PartialEq for Player {
     fn eq(&self, other: &Self) -> bool {
-        self.player_global_id == other.player_global_id
+        self.id == other.id
     }
 }
 
 impl Eq for Player {}
 
 impl Player {
-    fn new(global_id: PlayerGlobalId) -> Self {
+    fn new(id: PlayerGlobalId) -> Self {
         Self {
             connection_status: ConnectionStatus::Disconnected,
             name: String::new(),
-            player_global_id: global_id,
+            id,
             team: None,
             class: None,
             stats: (0, 0, 0),
@@ -157,16 +157,12 @@ impl AnalyzerState {
         })
     }
 
-    fn find_player_by_global_id(&self, global_id: &PlayerGlobalId) -> Option<&Player> {
-        self.players
-            .iter()
-            .find(|player| player.player_global_id == *global_id)
+    fn find_player_by_id(&self, id: &PlayerGlobalId) -> Option<&Player> {
+        self.players.iter().find(|player| player.id == *id)
     }
 
-    fn find_player_by_global_id_mut(&mut self, global_id: &PlayerGlobalId) -> Option<&mut Player> {
-        self.players
-            .iter_mut()
-            .find(|player| player.player_global_id == *global_id)
+    fn find_player_by_id_mut(&mut self, id: &PlayerGlobalId) -> Option<&mut Player> {
+        self.players.iter_mut().find(|player| player.id == *id)
     }
 }
 
@@ -243,7 +239,7 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             return;
         }
 
-        let player_global_id = fields
+        let id = fields
             .get("*sid")
             .map(|s| s.to_string())
             .or_else(|| {
@@ -276,8 +272,8 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             .unwrap_or(format!("Player {}", svc_update_user_info.id));
 
         // Make sure a record of this player exists first
-        if state.find_player_by_global_id(&player_global_id).is_none() {
-            let insert_id = player_global_id.clone();
+        if state.find_player_by_id(&id).is_none() {
+            let insert_id = id.clone();
             let new_player = Player::new(insert_id);
 
             state.players.push(new_player);
@@ -291,7 +287,7 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
         }
 
         // Find the player from the message, and assign it to the slot
-        if let Some(player) = state.find_player_by_global_id_mut(&player_global_id) {
+        if let Some(player) = state.find_player_by_id_mut(&id) {
             player
                 .with_connection_status(ConnectionStatus::Connected {
                     client_id: svc_update_user_info.index,

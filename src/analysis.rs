@@ -435,8 +435,8 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
         });
     } else if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
         let kill_info = match (
-            state.find_player_by_client_index(death_msg.killer_client_index),
-            state.find_player_by_client_index(death_msg.victim_client_index),
+            state.find_player_by_client_index(death_msg.killer_client_index - 1),
+            state.find_player_by_client_index(death_msg.victim_client_index - 1),
         ) {
             (Some(killer), Some(victim)) => Some((
                 killer.team.clone(),

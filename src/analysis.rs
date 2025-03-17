@@ -332,6 +332,22 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
             }
         }
 
+        AnalyzerEvent::UserMessage(Message::ObjScore(obj_score)) => {
+            let player = state.find_player_by_client_index_mut(obj_score.client_index - 1);
+
+            if let Some(player) = player {
+                player.stats.0 = obj_score.score as i32;
+            }
+        }
+
+        AnalyzerEvent::UserMessage(Message::Frags(frags)) => {
+            let player = state.find_player_by_client_index_mut(frags.client_index - 1);
+
+            if let Some(player) = player {
+                player.stats.1 = frags.frags as i32;
+            }
+        }
+
         _ => {}
     };
 }

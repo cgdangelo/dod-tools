@@ -287,12 +287,16 @@ fn scoreboard_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &
                     }
                 })
                 .body(|ref mut body| {
-                    // Players sorted by team then kills
+                    // Players sorted by team > score > kills
                     let mut players = Vec::from_iter(&r.analysis.players);
 
                     players.sort_by(|left, right| match (&left.team, &right.team) {
                         (Some(left_team), Some(right_team)) if left_team == right_team => {
-                            left.stats.0.cmp(&right.stats.0).reverse()
+                            if left.stats.0 == right.stats.0 {
+                                left.stats.1.cmp(&right.stats.1).reverse()
+                            } else {
+                                left.stats.0.cmp(&right.stats.0).reverse()
+                            }
                         }
 
                         (Some(Team::Allies), _) => Ordering::Less,

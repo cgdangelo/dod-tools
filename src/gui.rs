@@ -4,7 +4,7 @@ use crate::reporting::Report;
 use crate::run_analyzer;
 use egui::{
     panel::Side, Align, CentralPanel, CollapsingHeader, Context, Frame, Grid, Label, Layout,
-    ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
+    ProgressBar, ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
@@ -135,6 +135,23 @@ impl eframe::App for Gui {
                             ctx.memory_mut(|mem| mem.reset_areas());
                         }
                     }
+
+                    if let Some(batch_progress) = self.batch_progress {
+                        ui.separator();
+
+                        let bar_progress = (batch_progress.0 + 1) as f32 / batch_progress.1 as f32;
+                        let bar_label = format!(
+                            "Analyzing: {} of {}",
+                            batch_progress.0 + 1,
+                            batch_progress.1
+                        );
+
+                        ui.add(
+                            ProgressBar::new(bar_progress)
+                                .show_percentage()
+                                .text(bar_label),
+                        );
+                    };
                 });
             });
 

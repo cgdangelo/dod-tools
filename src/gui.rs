@@ -338,9 +338,10 @@ fn scoreboard_row_ui(
         });
 
         row.col(|ui| {
-            let profile_url = format!("https://steamcommunity.com/profiles/{}", &p.id.0);
+            let link_text = p.id.as_steam_id().unwrap_or(p.id.to_string());
+            let link_url = format!("https://steamcommunity.com/profiles/{}", p.id);
 
-            ui.hyperlink_to(&p.id.0, profile_url);
+            ui.hyperlink_to(link_text, link_url);
         });
 
         row.col(|ui| {

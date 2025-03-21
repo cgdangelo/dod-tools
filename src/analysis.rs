@@ -1,5 +1,6 @@
 use crate::dod::{Class, Message, RoundState, Team, Weapon};
 use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
+use nom::Parser;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
@@ -25,6 +26,22 @@ impl Default for GameTime {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct PlayerGlobalId(pub String);
+
+impl PlayerGlobalId {
+    pub fn as_steam_id(&self) -> Option<String> {
+        // https://github.com/jpcy/coldemoplayer/blob/9c97ab128ac889739c1643baf0d5fdf884d8a65f/compLexity%20Demo%20Player/Common.cs#L364-L383
+        let id64 = self.0.parse::<u64>().ok()?;
+        let universe = 0; // Public
+
+        let account_id = id64 - 76561197960265728;
+        let server_id = if account_id % 2 == 0 { 0 } else { 1 };
+        let account_id = (account_id - server_id) / 2;
+
+        let steam_id = format!("STEAM_{}:{}:{}", universe, account_id & 1, account_id);
+
+        Some(steam_id)
+    }
+}
 
 impl Display for PlayerGlobalId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

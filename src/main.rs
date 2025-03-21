@@ -13,7 +13,6 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 mod analysis;
-#[allow(dead_code)]
 mod dod;
 mod gui;
 mod reporting;

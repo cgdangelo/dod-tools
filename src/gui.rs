@@ -509,6 +509,12 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
             });
         })
         .body(|mut body| {
+            let (total_kills, total_teamkills) = weapon_breakdown
+                .iter()
+                .fold((0, 0), |(k_sum, tk_sum), (_, (k, tk))| {
+                    (k_sum + k, tk_sum + tk)
+                });
+
             for (weapon, (kills, teamkills)) in weapon_breakdown {
                 body.row(TABLE_ROW_HEIGHT, |mut row| {
                     row.col(|ui| {
@@ -516,11 +522,27 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
                     });
 
                     row.col(|ui| {
-                        ui.label(kills.to_string());
+                        ui.label(format!(
+                            "{} ({}%)",
+                            kills,
+                            if kills + total_kills > 0 {
+                                ((*kills as f32 / total_kills as f32) * 100.).floor()
+                            } else {
+                                0.
+                            }
+                        ));
                     });
 
                     row.col(|ui| {
-                        ui.label(teamkills.to_string());
+                        ui.label(format!(
+                            "{} ({}%)",
+                            teamkills,
+                            if teamkills + total_teamkills > 0 {
+                                ((*teamkills as f32 / total_teamkills as f32) * 100.).floor()
+                            } else {
+                                0.
+                            }
+                        ));
                     });
                 });
             }

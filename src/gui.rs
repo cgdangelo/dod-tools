@@ -134,26 +134,28 @@ impl eframe::App for Gui {
                         if ui.button("Organize Windows").clicked() {
                             ctx.memory_mut(|mem| mem.reset_areas());
                         }
-                    }
-
-                    if let Some(batch_progress) = self.batch_progress {
-                        ui.separator();
-
-                        let bar_progress = (batch_progress.0 + 1) as f32 / batch_progress.1 as f32;
-                        let bar_label = format!(
-                            "Analyzing: {} of {}",
-                            batch_progress.0 + 1,
-                            batch_progress.1
-                        );
-
-                        ui.add(
-                            ProgressBar::new(bar_progress)
-                                .show_percentage()
-                                .text(bar_label),
-                        );
                     };
                 });
             });
+
+        if let Some(batch_progress) = self.batch_progress {
+            TopBottomPanel::bottom("status")
+                .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
+                .show(ctx, |ui| {
+                    let bar_progress = (batch_progress.0 + 1) as f32 / batch_progress.1 as f32;
+                    let bar_label = format!(
+                        "Analyzing: {} of {}",
+                        batch_progress.0 + 1,
+                        batch_progress.1
+                    );
+
+                    ui.add(
+                        ProgressBar::new(bar_progress)
+                            .show_percentage()
+                            .text(bar_label),
+                    );
+                });
+        }
 
         SidePanel::new(Side::Left, "open_reports")
             .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))

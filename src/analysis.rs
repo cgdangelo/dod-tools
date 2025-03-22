@@ -651,7 +651,10 @@ pub fn use_clan_match_detection_updates(
                 let current_time = state.current_time.clone();
 
                 // Players and teams have no score; we infer that this is the match start point
-                if state.players.iter().all(|player| player.stats == (0, 0, 0))
+                if state
+                    .players
+                    .iter()
+                    .all(|player| matches!(player.stats, (0, _, _)))
                     && state.team_scores.iter().all(|(_, score)| *score == 0)
                 {
                     println!(
@@ -672,9 +675,18 @@ pub fn use_clan_match_detection_updates(
                         player.kill_streaks.clear();
                         player.weapon_breakdown.clear();
                     }
-                }
 
-                state.clan_match_detection = ClanMatchDetection::MatchIsLive;
+                    state.clan_match_detection = ClanMatchDetection::MatchIsLive;
+                } else {
+                    println!(
+                        "t={:<20?} Players with non-zero score!",
+                        current_time.offset
+                    );
+
+                    for player in &state.players {
+                        println!("\t{} {:?}", player.name, player.stats);
+                    }
+                }
             }
 
             _ => {}

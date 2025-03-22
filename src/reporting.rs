@@ -89,20 +89,17 @@ impl Display for Report {
                 ]);
             }
 
-            let match_result_fragment = match (
-                self.analysis.team_scores.get(&Team::Allies),
-                self.analysis.team_scores.get(&Team::Axis),
-            ) {
-                (Some(allies_score), Some(axis_score)) => {
-                    format!(
-                        ": Allies ({}) {} Axis ({})",
-                        allies_score,
-                        if allies_score > axis_score { ">" } else { "<" },
-                        axis_score
-                    )
-                }
-                _ => String::new(),
-            };
+            let (allies_score, axis_score) = (
+                self.analysis.team_scores.get_team_score(Team::Allies),
+                self.analysis.team_scores.get_team_score(Team::Axis),
+            );
+
+            let match_result_fragment = format!(
+                ": Allies ({}) {} Axis ({})",
+                allies_score,
+                if allies_score > axis_score { ">" } else { "<" },
+                axis_score
+            );
 
             writeln!(f, "## Scoreboard{}\n", match_result_fragment)?;
 

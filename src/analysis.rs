@@ -150,8 +150,36 @@ pub struct AnalyzerState {
     pub current_time: GameTime,
     pub players: Vec<Player>,
     pub rounds: Vec<Round>,
-    pub team_scores: HashMap<Team, i32>,
-    pub team_scores_timeline: Vec<(GameTime, Team, i32)>,
+    pub team_scores: TeamScores,
+}
+
+#[derive(Debug, Default)]
+pub struct TeamScores {
+    current_scores: HashMap<Team, i32>,
+    timeline: Vec<(GameTime, Team, i32)>,
+}
+
+impl TeamScores {
+    pub fn get_team_score(&self, team: Team) -> i32 {
+        self.timeline
+            .iter()
+            .rfind(|(_, t, _)| *t == team)
+            .map(|(_, _, points)| *points)
+            .unwrap_or(0)
+    }
+
+    pub fn add_team_score(&mut self, game_time: GameTime, team: Team, points: i32) {
+        self.timeline.push((game_time, team, points));
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(GameTime, Team, i32)> {
+        self.timeline.iter()
+    }
+
+    fn reset(&mut self) {
+        self.current_scores.clear();
+        self.timeline.clear();
+    }
 }
 
 #[derive(Debug, Default)]
@@ -446,12 +474,11 @@ pub fn use_weapon_breakdown_updates(state: &mut AnalyzerState, event: &AnalyzerE
 
 pub fn use_team_score_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     if let AnalyzerEvent::UserMessage(Message::TeamScore(team_score)) = event {
-        let team_entry = state
-            .team_scores
-            .entry(team_score.team.clone())
-            .or_insert(0);
-
-        *team_entry = team_score.score as i32;
+        state.team_scores.add_team_score(
+            state.current_time.clone(),
+            team_score.team.clone(),
+            team_score.score as i32,
+        );
     }
 }
 
@@ -652,7 +679,11 @@ pub fn use_clan_match_detection_updates(
                     .players
                     .iter()
                     .all(|player| matches!(player.stats, (0, _, _)))
-                    && state.team_scores.iter().all(|(_, score)| *score == 0)
+                    && state
+                        .team_scores
+                        .current_scores
+                        .iter()
+                        .all(|(_, score)| *score == 0)
                 {
                     println!(
                         "t={:<20?} Match start detected via scores heuristic; clearing state",
@@ -666,7 +697,7 @@ pub fn use_clan_match_detection_updates(
                         start_time: reset_time.clone(),
                     });
 
-                    state.team_scores.clear();
+                    state.team_scores.reset();
 
                     for player in state.players.iter_mut() {
                         player.kill_streaks.clear();
@@ -698,15 +729,5 @@ pub fn use_clan_match_detection_updates(
 
             state.clan_match_detection = ClanMatchDetection::WaitingForReset;
         }
-    }
-}
-
-pub fn use_timeline_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::UserMessage(Message::TeamScore(team_score)) = event {
-        state.team_scores_timeline.push((
-            state.current_time.clone(),
-            team_score.team.clone(),
-            team_score.score as i32,
-        ));
     }
 }

@@ -277,20 +277,17 @@ fn header_ui(r: &Report, ui: &mut Ui) {
 }
 
 fn scoreboard_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
-    let match_result_fragment = match (
-        r.analysis.team_scores.get(&Team::Allies),
-        r.analysis.team_scores.get(&Team::Axis),
-    ) {
-        (Some(allies_score), Some(axis_score)) => {
-            format!(
-                "Allies ({}) {} Axis ({})",
-                allies_score,
-                if allies_score > axis_score { ">" } else { "<" },
-                axis_score
-            )
-        }
-        _ => String::new(),
-    };
+    let (allies_score, axis_score) = (
+        r.analysis.team_scores.get_team_score(Team::Allies),
+        r.analysis.team_scores.get_team_score(Team::Axis),
+    );
+
+    let match_result_fragment = format!(
+        ": Allies ({}) {} Axis ({})",
+        allies_score,
+        if allies_score > axis_score { ">" } else { "<" },
+        axis_score
+    );
 
     CollapsingHeader::new(format!("Scoreboard: {}", match_result_fragment))
         .default_open(true)
@@ -414,9 +411,6 @@ fn timeline_ui(r: &Report, ui: &mut Ui) {
             let plot = Plot::new("timeline_plot")
                 .height(200.)
                 .width(ui.max_rect().width())
-                .allow_drag(false)
-                .allow_scroll(false)
-                .allow_zoom(false)
                 .legend(Legend::default().position(Corner::LeftTop))
                 .custom_x_axes(vec![]) // Remove the x-axis
                 .custom_y_axes(vec![]) // Remove the y-axis
@@ -434,34 +428,27 @@ fn timeline_ui(r: &Report, ui: &mut Ui) {
                 });
 
             plot.show(ui, |plot_ui| {
-                let points =
+                let team_line_points = |team: Team| {
                     r.analysis
-                        .team_scores_timeline
+                        .team_scores
                         .iter()
-                        .filter_map(|(time, team, score)| {
-                            if *team == Team::Allies {
+                        .filter_map(move |(time, t, score)| {
+                            if *t == team {
                                 Some([time.offset.as_secs_f64(), *score as f64])
                             } else {
                                 None
                             }
-                        });
+                        })
+                };
 
+                let points = team_line_points(Team::Allies);
                 let line = Line::new(PlotPoints::from_iter(points))
                     .color(ALLIES_COLOR)
                     .name("Allies");
+
                 plot_ui.line(line);
 
-                let points =
-                    r.analysis
-                        .team_scores_timeline
-                        .iter()
-                        .filter_map(|(time, team, score)| {
-                            if *team == Team::Axis {
-                                Some([time.offset.as_secs_f64(), *score as f64])
-                            } else {
-                                None
-                            }
-                        });
+                let points = team_line_points(Team::Axis);
 
                 let line = Line::new(PlotPoints::from_iter(points))
                     .color(AXIS_COLOR)

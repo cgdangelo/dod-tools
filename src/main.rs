@@ -1,7 +1,7 @@
 use crate::analysis::{
     frame_to_events, use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates,
-    use_rounds_updates, use_scoreboard_updates, use_team_score_updates, use_timeline_updates,
-    use_timing_updates, use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
+    use_rounds_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates,
+    use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
 };
 use crate::gui::Gui;
 use crate::reporting::{DemoInfo, FileInfo, Report};
@@ -69,7 +69,6 @@ fn run_analyzer(demo_path: &PathBuf) -> Report {
         use_weapon_breakdown_updates(&mut state, event);
         use_team_score_updates(&mut state, event);
         use_rounds_updates(&mut state, event);
-        use_timeline_updates(&mut state, event);
         use_clan_match_detection_updates(Duration::from_secs(10), &mut state, event);
 
         state

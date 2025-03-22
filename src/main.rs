@@ -53,20 +53,13 @@ async fn run_gui() {
 fn run_analyzer(demo_path: &PathBuf) -> Report {
     let demo = open_demo(demo_path).expect("Could not parse the demo");
 
-    let playback_frames = demo
-        .directory
-        .entries
-        .last()
-        .map(|entry| entry.frames.iter())
-        .unwrap_or_default();
-
     let events = vec![AnalyzerEvent::Initialization].into_iter().chain(
-        playback_frames
-            .flat_map(frame_to_events)
+        demo.directory
+            .entries
+            .iter()
+            .flat_map(|entry| entry.frames.iter().flat_map(frame_to_events))
             .chain(vec![AnalyzerEvent::Finalization]),
     );
-
-    let mut rounds_len: usize = 0;
 
     let analysis = events.fold(AnalyzerState::default(), |mut state, ref event| {
         use_timing_updates(&mut state, event);

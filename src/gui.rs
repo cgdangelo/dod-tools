@@ -13,6 +13,7 @@ use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
@@ -80,8 +81,7 @@ impl eframe::App for Gui {
             Ok(GuiMessage::AnalyzerProgress { progress, report }) => {
                 self.batch_progress = Some(progress);
 
-                let title = get_report_title(&report);
-                self.open_reports.insert(title);
+                self.open_reports.insert(report.file_info.path.clone());
 
                 self.reports.push(*report);
             }
@@ -100,7 +100,17 @@ impl eframe::App for Gui {
                 .filter_map(|dropped_file| dropped_file.path.clone())
                 .collect::<Vec<PathBuf>>();
 
-            let demo_paths = Vec::from_iter(from_picker.into_iter().chain(from_drop));
+            let demo_paths =
+                Vec::from_iter(from_picker.into_iter().chain(from_drop).filter(|path| {
+                    if let Some(path) = path.to_str().and_then(|str| String::from_str(str).ok()) {
+                        !self
+                            .reports
+                            .iter()
+                            .any(|report| report.file_info.path == path)
+                    } else {
+                        false
+                    }
+                }));
 
             if !demo_paths.is_empty() {
                 analyze_files_async(ctx.clone(), self.tx.clone(), demo_paths);
@@ -165,7 +175,7 @@ impl eframe::App for Gui {
                         let mut reports = self.reports.iter().peekable();
 
                         while let Some(r) = reports.next() {
-                            let title = get_report_title(r);
+                            let title = r.file_info.path.clone();
                             let mut is_open = self.open_reports.contains(&title);
 
                             ui.toggle_value(&mut is_open, &title);
@@ -196,10 +206,10 @@ impl eframe::App for Gui {
             });
 
             for r in &self.reports {
-                let title = get_report_title(r);
-                let mut is_open = self.open_reports.contains(&title);
+                let demo_path = r.file_info.path.clone();
+                let mut is_open = self.open_reports.contains(&demo_path);
 
-                Window::new(&title)
+                Window::new(&r.file_info.path)
                     .default_height(600.)
                     .open(&mut is_open)
                     .show(ctx, |ui| {
@@ -207,9 +217,9 @@ impl eframe::App for Gui {
                     });
 
                 if !is_open {
-                    self.open_reports.remove(&title);
+                    self.open_reports.remove(&demo_path);
                 } else {
-                    self.open_reports.insert(title);
+                    self.open_reports.insert(demo_path);
                 }
             }
         });
@@ -223,10 +233,6 @@ const ALLIES_COLOR: Color32 = Color32::DARK_GREEN;
 const AXIS_COLOR: Color32 = Color32::DARK_RED;
 
 const NEUTRAL_COLOR: Color32 = Color32::WHITE;
-
-fn get_report_title(r: &Report) -> String {
-    format!("{} ({})", &r.file_info.name, &r.demo_info.map_name)
-}
 
 fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
     header_ui(r, ui);
@@ -259,6 +265,10 @@ fn header_ui(r: &Report, ui: &mut Ui) {
 
                 ui.strong("File created at");
                 ui.label(format_rfc3339_seconds(r.file_info.created_at).to_string());
+                ui.end_row();
+
+                ui.strong("Map name");
+                ui.label(&r.demo_info.map_name);
                 ui.end_row();
 
                 ui.strong("Demo protocol");

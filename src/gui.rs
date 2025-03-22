@@ -11,7 +11,6 @@ use egui_file_dialog::FileDialog;
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::fmt::Write;
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
@@ -440,14 +439,16 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
                         });
 
                         row.col(|ui| {
-                            let start_time = Duration::new(start_time.offset.as_secs(), 0);
+                            let start_time =
+                                Duration::from_millis(start_time.offset.as_millis() as u64);
 
                             ui.label(format_duration(start_time).to_string());
                         });
 
                         row.col(|ui| {
-                            let duration =
-                                Duration::new((end_time.offset - start_time.offset).as_secs(), 0);
+                            let duration = Duration::from_millis(
+                                (end_time.offset - start_time.offset).as_millis() as u64,
+                            );
 
                             ui.label(format_duration(duration).to_string());
                         });
@@ -648,9 +649,6 @@ fn analyze_files_async(ctx: Context, tx: mpsc::Sender<GuiMessage>, paths: Vec<Pa
 
         for (index, file) in paths.iter().enumerate() {
             let report = run_analyzer(file);
-            let mut report_text = String::new();
-
-            write!(report_text, "{}", report).unwrap();
 
             tx.send(GuiMessage::AnalyzerProgress {
                 progress: (index + 1, paths.len()),

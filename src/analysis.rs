@@ -1,6 +1,6 @@
 use crate::dod::{Class, Message, RoundState, Team, Weapon};
 use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
-use nom::Parser;
+use humantime::format_duration;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
@@ -73,7 +73,7 @@ pub struct Player {
     pub weapon_breakdown: HashMap<Weapon, (u32, u32)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct KillStreak {
     pub kills: Vec<(GameTime, Weapon)>,
 }
@@ -101,7 +101,7 @@ impl Player {
             team: None,
             class: None,
             stats: (0, 0, 0),
-            kill_streaks: vec![KillStreak { kills: vec![] }],
+            kill_streaks: vec![],
             weapon_breakdown: HashMap::new(),
         }
     }
@@ -147,10 +147,21 @@ pub enum AnalyzerEvent<'a> {
 
 #[derive(Debug, Default)]
 pub struct AnalyzerState {
+    pub clan_match_detection: ClanMatchDetection,
     pub current_time: GameTime,
     pub players: Vec<Player>,
     pub rounds: Vec<Round>,
     pub team_scores: HashMap<Team, i32>,
+}
+
+#[derive(Debug, Default)]
+pub enum ClanMatchDetection {
+    #[default]
+    WaitingForReset,
+    WaitingForNormal {
+        reset_time: GameTime,
+    },
+    MatchIsLive,
 }
 
 impl AnalyzerState {
@@ -388,6 +399,10 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
         let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
 
         if let Some(killer) = killer {
+            if killer.kill_streaks.is_empty() {
+                killer.kill_streaks.push(KillStreak::default());
+            }
+
             if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
                 killer_current_streak
                     .kills
@@ -443,54 +458,13 @@ pub fn use_team_score_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
 }
 
 pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::Initialization = event {
-        // Make sure demo starts with an active round if recording started after match start
-        state.rounds.push(Round::Active {
-            allies_kills: 0,
-            axis_kills: 0,
-            start_time: state.current_time.clone(),
-        });
-    } else if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
-        let kill_info = match (
-            state.find_player_by_client_index(death_msg.killer_client_index - 1),
-            state.find_player_by_client_index(death_msg.victim_client_index - 1),
-        ) {
-            (Some(killer), Some(victim)) => Some((
-                killer.team.clone(),
-                killer.team.is_some() && killer.team == victim.team,
-            )),
-
-            _ => None,
-        };
-
-        if let (
-            Some(Round::Active {
-                allies_kills,
-                axis_kills,
-                ..
-            }),
-            Some((team, is_teamkill)),
-        ) = (state.rounds.last_mut(), kill_info)
-        {
-            if is_teamkill {
-                return;
-            }
-
-            if let Some(Team::Allies) = team {
-                *allies_kills += 1;
-            } else if let Some(Team::Axis) = team {
-                *axis_kills += 1;
-            }
-        };
-    } else if let AnalyzerEvent::UserMessage(Message::RoundState(round_state)) = event {
-        match round_state {
-            RoundState::Reset => {
-                // Infer first reset/normal as start of match
-                if state.rounds.len() == 1 {
-                    if let Some(Round::Active { .. }) = state.rounds.first() {
-                        state.rounds.clear();
-                    }
-                }
+    match event {
+        AnalyzerEvent::Initialization => {
+            if state.rounds.is_empty() {
+                println!(
+                    "t={:<20?} Initializing active round in case match is already live",
+                    state.current_time.offset
+                );
 
                 state.rounds.push(Round::Active {
                     allies_kills: 0,
@@ -498,41 +472,203 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
                     start_time: state.current_time.clone(),
                 });
             }
+        }
 
-            RoundState::AlliesWin | RoundState::AxisWin => {
-                let current_round = state.rounds.pop();
+        AnalyzerEvent::Finalization => {
+            if let Some(Round::Active { start_time, .. }) = state.rounds.pop() {
+                println!(
+                    "t={:<20?} Completing last round: start_time={:?}",
+                    state.current_time.offset, start_time.offset
+                );
 
-                if let Some(Round::Active {
-                    allies_kills,
-                    axis_kills,
+                state.rounds.push(Round::Completed {
+                    start_time: start_time.clone(),
+                    end_time: state.current_time.clone(),
+                    winner_stats: None,
+                });
+            }
+
+            println!(
+                "t={:<20?} Final state: sizeof={}",
+                state.current_time.offset,
+                state.rounds.len()
+            );
+
+            for (i, round) in state.rounds.iter().enumerate() {
+                if let Round::Completed {
                     start_time,
-                }) = current_round
+                    end_time,
+                    winner_stats,
+                } = round
                 {
-                    let (winner, winner_kills) = if matches!(round_state, RoundState::AlliesWin) {
-                        (Team::Allies, allies_kills)
-                    } else {
-                        (Team::Axis, axis_kills)
-                    };
+                    println!(
+                        "\tRound #{}: start={:<20?} end={:<20?} dur={} winner={:?}",
+                        i + 1,
+                        start_time.offset,
+                        end_time.offset,
+                        format_duration(end_time.offset - start_time.offset),
+                        winner_stats
+                    );
+                }
+            }
+        }
 
-                    state.rounds.push(Round::Completed {
-                        start_time,
-                        end_time: state.current_time.clone(),
-                        winner_stats: Some((winner, winner_kills)),
+        AnalyzerEvent::UserMessage(Message::RoundState(round_state)) => {
+            match round_state {
+                RoundState::Reset => {
+                    println!(
+                        "t={:<20?} Starting new round from reset",
+                        state.current_time.offset
+                    );
+
+                    state.rounds.push(Round::Active {
+                        allies_kills: 0,
+                        axis_kills: 0,
+                        start_time: state.current_time.clone(),
                     });
                 }
+
+                RoundState::AlliesWin | RoundState::AxisWin => {
+                    println!(
+                        "t={:<20?} Observed a round win: {:?}",
+                        state.current_time.offset, round_state
+                    );
+
+                    let active_round = state
+                        .rounds
+                        .pop()
+                        .expect("Got a RoundState(Win) with no active round");
+
+                    if let Round::Active {
+                        start_time,
+                        allies_kills,
+                        axis_kills,
+                    } = active_round
+                    {
+                        let winner_stats = if matches!(round_state, RoundState::AlliesWin) {
+                            (Team::Allies, allies_kills)
+                        } else {
+                            (Team::Axis, axis_kills)
+                        };
+
+                        let completed_round = Round::Completed {
+                            start_time,
+                            end_time: state.current_time.clone(),
+                            winner_stats: Some(winner_stats),
+                        };
+
+                        println!(
+                            "t={:<20?} Adding completed round: {:?}",
+                            state.current_time.offset, completed_round
+                        );
+
+                        state.rounds.push(completed_round);
+                    } else {
+                        panic!("Got a RoundState(Win) with no active round")
+                    }
+                }
+
+                _ => {}
+            };
+        }
+
+        AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) => {
+            let killer = state.find_player_by_client_index(death_msg.killer_client_index - 1);
+            let victim = state.find_player_by_client_index(death_msg.victim_client_index - 1);
+
+            let kill_info = match (killer, victim) {
+                (Some(killer), Some(victim)) => Some((
+                    killer.team.clone(),
+                    killer.team.is_some() && killer.team == victim.team,
+                )),
+                _ => None,
+            };
+
+            if let (
+                Some(Round::Active {
+                    allies_kills,
+                    axis_kills,
+                    ..
+                }),
+                Some((team, is_teamkill)),
+            ) = (state.rounds.last_mut(), kill_info)
+            {
+                if is_teamkill {
+                    return;
+                }
+
+                if let Some(Team::Allies) = team {
+                    *allies_kills += 1;
+                } else {
+                    *axis_kills += 1;
+                }
+            }
+        }
+
+        _ => {}
+    };
+}
+
+pub fn use_clan_match_detection_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::UserMessage(Message::ClanTimer(_)) = event {
+        // Match is already live, but we observed a ClanTimer. We infer that match is restarting.
+        if let ClanMatchDetection::MatchIsLive = state.clan_match_detection {
+            println!(
+                "t={:<20?} Possible match restart detected via timer; waiting for reset",
+                state.current_time.offset
+            );
+
+            state.clan_match_detection = ClanMatchDetection::WaitingForReset;
+        }
+    } else if let AnalyzerEvent::UserMessage(Message::RoundState(round_state)) = event {
+        match (&state.clan_match_detection, round_state) {
+            (ClanMatchDetection::WaitingForReset, RoundState::Reset) => {
+                println!(
+                    "t={:<20?} Possible match start detected; waiting for normal",
+                    state.current_time.offset
+                );
+
+                state.clan_match_detection = ClanMatchDetection::WaitingForNormal {
+                    reset_time: state.current_time.clone(),
+                };
+            }
+
+            (ClanMatchDetection::WaitingForNormal { reset_time }, RoundState::Normal) => {
+                println!(
+                    "t={:<20?} Round reset freeze ended, checking player scores",
+                    state.current_time.offset
+                );
+
+                let current_time = state.current_time.clone();
+
+                // Players and teams have no score; we infer that this is the match start point
+                if state.players.iter().all(|player| player.stats == (0, 0, 0))
+                    && state.team_scores.iter().all(|(_, score)| *score == 0)
+                {
+                    println!(
+                        "t={:<20?} Match start detected via scores heuristic; clearing state",
+                        current_time.offset
+                    );
+
+                    state.rounds.clear();
+                    state.rounds.push(Round::Active {
+                        allies_kills: 0,
+                        axis_kills: 0,
+                        start_time: reset_time.clone(),
+                    });
+
+                    state.team_scores.clear();
+
+                    for player in state.players.iter_mut() {
+                        player.kill_streaks.clear();
+                        player.weapon_breakdown.clear();
+                    }
+                }
+
+                state.clan_match_detection = ClanMatchDetection::MatchIsLive;
             }
 
             _ => {}
         }
-    } else if let AnalyzerEvent::Finalization = event {
-        let current_round = state.rounds.pop();
-
-        if let Some(Round::Active { start_time, .. }) = current_round {
-            state.rounds.push(Round::Completed {
-                start_time,
-                end_time: state.current_time.clone(),
-                winner_stats: None,
-            });
-        }
-    }
+    };
 }

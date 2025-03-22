@@ -158,7 +158,9 @@ pub struct AnalyzerState {
 pub enum ClanMatchDetection {
     #[default]
     WaitingForReset,
-    WaitingForNormal,
+    WaitingForNormal {
+        reset_time: GameTime,
+    },
     MatchIsLive,
 }
 
@@ -593,10 +595,12 @@ pub fn use_clan_match_detection_updates(state: &mut AnalyzerState, event: &Analy
                     state.current_time.offset
                 );
 
-                state.clan_match_detection = ClanMatchDetection::WaitingForNormal;
+                state.clan_match_detection = ClanMatchDetection::WaitingForNormal {
+                    reset_time: state.current_time.clone(),
+                };
             }
 
-            (ClanMatchDetection::WaitingForNormal, RoundState::Normal) => {
+            (ClanMatchDetection::WaitingForNormal { reset_time }, RoundState::Normal) => {
                 println!(
                     "t={:<20?} Round reset freeze ended, checking player scores",
                     state.current_time.offset
@@ -617,7 +621,7 @@ pub fn use_clan_match_detection_updates(state: &mut AnalyzerState, event: &Analy
                     state.rounds.push(Round::Active {
                         allies_kills: 0,
                         axis_kills: 0,
-                        start_time: current_time.clone(),
+                        start_time: reset_time.clone(),
                     });
 
                     state.team_scores.clear();

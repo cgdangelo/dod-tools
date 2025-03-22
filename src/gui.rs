@@ -439,14 +439,16 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
                         });
 
                         row.col(|ui| {
-                            let start_time = Duration::new(start_time.offset.as_secs(), 0);
+                            let start_time =
+                                Duration::from_millis(start_time.offset.as_millis() as u64);
 
                             ui.label(format_duration(start_time).to_string());
                         });
 
                         row.col(|ui| {
-                            let duration =
-                                Duration::new((end_time.offset - start_time.offset).as_secs(), 0);
+                            let duration = Duration::from_millis(
+                                (end_time.offset - start_time.offset).as_millis() as u64,
+                            );
 
                             ui.label(format_duration(duration).to_string());
                         });

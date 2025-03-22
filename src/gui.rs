@@ -11,7 +11,6 @@ use egui_file_dialog::FileDialog;
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::fmt::Write;
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
@@ -648,9 +647,6 @@ fn analyze_files_async(ctx: Context, tx: mpsc::Sender<GuiMessage>, paths: Vec<Pa
 
         for (index, file) in paths.iter().enumerate() {
             let report = run_analyzer(file);
-            let mut report_text = String::new();
-
-            write!(report_text, "{}", report).unwrap();
 
             tx.send(GuiMessage::AnalyzerProgress {
                 progress: (index + 1, paths.len()),

@@ -167,32 +167,34 @@ impl eframe::App for Gui {
                 });
         }
 
-        SidePanel::new(Side::Left, "open_reports")
-            .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                        let mut reports = self.reports.iter().peekable();
+        if !self.open_reports.is_empty() {
+            SidePanel::new(Side::Left, "open_reports")
+                .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
+                .show(ctx, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
+                            let mut reports = self.reports.iter().peekable();
 
-                        while let Some(r) = reports.next() {
-                            let title = r.file_info.path.clone();
-                            let mut is_open = self.open_reports.contains(&title);
+                            while let Some(r) = reports.next() {
+                                let title = r.file_info.path.clone();
+                                let mut is_open = self.open_reports.contains(&title);
 
-                            ui.toggle_value(&mut is_open, &title);
+                                ui.toggle_value(&mut is_open, &title);
 
-                            if !is_open {
-                                self.open_reports.remove(&title);
-                            } else {
-                                self.open_reports.insert(title);
+                                if !is_open {
+                                    self.open_reports.remove(&title);
+                                } else {
+                                    self.open_reports.insert(title);
+                                }
+
+                                if reports.peek().is_some() {
+                                    ui.separator();
+                                }
                             }
-
-                            if reports.peek().is_some() {
-                                ui.separator();
-                            }
-                        }
+                        });
                     });
                 });
-            });
+        }
 
         CentralPanel::default().show(ctx, |ui| {
             ui.centered_and_justified(|ui| {
@@ -206,10 +208,11 @@ impl eframe::App for Gui {
             });
 
             for r in &self.reports {
-                let demo_path = r.file_info.path.clone();
-                let mut is_open = self.open_reports.contains(&demo_path);
+                let demo_path = &r.file_info.path;
+                let mut is_open = self.open_reports.contains(demo_path);
 
-                Window::new(&r.file_info.path)
+                Window::new(&r.file_info.name)
+                    .id(demo_path.clone().into())
                     .default_height(600.)
                     .open(&mut is_open)
                     .show(ctx, |ui| {
@@ -217,9 +220,9 @@ impl eframe::App for Gui {
                     });
 
                 if !is_open {
-                    self.open_reports.remove(&demo_path);
+                    self.open_reports.remove(demo_path);
                 } else {
-                    self.open_reports.insert(demo_path);
+                    self.open_reports.insert(demo_path.clone());
                 }
             }
         });

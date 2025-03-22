@@ -485,70 +485,67 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
                 });
             })
             .body(|mut ui| {
-                let mut rounds = r.analysis.rounds.iter().enumerate();
-
                 let mut match_duration = Duration::default();
 
-                while let Some((
-                    i,
-                    Round::Completed {
+                for (i, round) in r.analysis.rounds.iter().enumerate() {
+                    if let Round::Completed {
                         start_time,
                         end_time,
                         winner_stats,
-                    },
-                )) = rounds.next()
-                {
-                    match_duration += end_time.offset - start_time.offset;
+                    } = round
+                    {
+                        match_duration += end_time.offset - start_time.offset;
 
-                    ui.row(TABLE_ROW_HEIGHT, |mut row| {
-                        row.col(|ui| {
-                            ui.painter().rect_filled(
-                                ui.max_rect(),
-                                0.0,
-                                match winner_stats {
-                                    Some((Team::Allies, _)) => ALLIES_COLOR,
-                                    Some((Team::Axis, _)) => AXIS_COLOR,
-                                    _ => NEUTRAL_COLOR,
-                                },
-                            );
-                        });
-
-                        row.col(|ui| {
-                            ui.label((i + 1).to_string());
-                        });
-
-                        row.col(|ui| {
-                            let start_time =
-                                Duration::from_millis(start_time.offset.as_millis() as u64);
-
-                            ui.label(format_duration(start_time).to_string());
-                        });
-
-                        row.col(|ui| {
-                            let duration = Duration::from_millis(
-                                (end_time.offset - start_time.offset).as_millis() as u64,
-                            );
-
-                            ui.label(format_duration(duration).to_string());
-                        });
-
-                        if let Some((winner, kills)) = winner_stats {
+                        ui.row(TABLE_ROW_HEIGHT, |mut row| {
                             row.col(|ui| {
-                                ui.label(if matches!(winner, Team::Allies) {
-                                    "Allies"
-                                } else {
-                                    "Axis"
+                                ui.painter().rect_filled(
+                                    ui.max_rect(),
+                                    0.0,
+                                    match winner_stats {
+                                        Some((Team::Allies, _)) => ALLIES_COLOR,
+                                        Some((Team::Axis, _)) => AXIS_COLOR,
+                                        _ => NEUTRAL_COLOR,
+                                    },
+                                );
+                            });
+
+                            row.col(|ui| {
+                                ui.label((i + 1).to_string());
+                            });
+
+                            row.col(|ui| {
+                                let start_time =
+                                    Duration::from_millis(start_time.offset.as_millis() as u64);
+
+                                ui.label(format_duration(start_time).to_string());
+                            });
+
+                            row.col(|ui| {
+                                let duration = Duration::from_millis(
+                                    (end_time.offset - start_time.offset).as_millis() as u64,
+                                );
+
+                                ui.label(format_duration(duration).to_string());
+                            });
+
+                            if let Some((winner, kills)) = winner_stats {
+                                row.col(|ui| {
+                                    ui.label(if matches!(winner, Team::Allies) {
+                                        "Allies"
+                                    } else {
+                                        "Axis"
+                                    });
                                 });
-                            });
 
-                            row.col(|ui| {
-                                ui.label(kills.to_string());
-                            });
-                        } else {
-                            row.col(|_ui| {});
-                            row.col(|_ui| {});
-                        }
-                    });
+                                row.col(|ui| {
+                                    ui.label(kills.to_string());
+                                });
+                            } else {
+                                row.col(|_ui| {});
+                                row.col(|_ui| {});
+                            }
+                        });
+                    }
                 }
 
                 ui.row(TABLE_ROW_HEIGHT, |mut row| {

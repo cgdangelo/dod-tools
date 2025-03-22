@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+
 use crate::analysis::{
     frame_to_events, use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates,
     use_rounds_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates,

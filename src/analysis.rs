@@ -151,6 +151,7 @@ pub struct AnalyzerState {
     pub players: Vec<Player>,
     pub rounds: Vec<Round>,
     pub team_scores: HashMap<Team, i32>,
+    pub team_scores_timeline: Vec<(GameTime, Team, i32)>,
 }
 
 #[derive(Debug, Default)]
@@ -697,5 +698,15 @@ pub fn use_clan_match_detection_updates(
 
             state.clan_match_detection = ClanMatchDetection::WaitingForReset;
         }
+    }
+}
+
+pub fn use_timeline_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::UserMessage(Message::TeamScore(team_score)) = event {
+        state.team_scores_timeline.push((
+            state.current_time.clone(),
+            team_score.team.clone(),
+            team_score.score as i32,
+        ));
     }
 }

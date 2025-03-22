@@ -8,6 +8,7 @@ use egui::{
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
+use egui_plot::{Corner, Legend, Line, Plot, PlotPoints};
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -217,6 +218,12 @@ impl eframe::App for Gui {
 
 const TABLE_ROW_HEIGHT: f32 = 18.;
 
+const ALLIES_COLOR: Color32 = Color32::DARK_GREEN;
+
+const AXIS_COLOR: Color32 = Color32::DARK_RED;
+
+const NEUTRAL_COLOR: Color32 = Color32::PLACEHOLDER;
+
 fn get_report_title(r: &Report) -> String {
     format!("{} ({})", &r.file_info.name, &r.demo_info.map_name)
 }
@@ -227,6 +234,10 @@ fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut 
     ui.separator();
 
     scoreboard_ui(r, player_highlighting, ui);
+
+    ui.separator();
+
+    timeline_ui(r, ui);
 
     ui.separator();
 
@@ -396,6 +407,70 @@ fn scoreboard_row_ui(
     });
 }
 
+fn timeline_ui(r: &Report, ui: &mut Ui) {
+    CollapsingHeader::new("Timeline")
+        .default_open(true)
+        .show(ui, |ui| {
+            let plot = Plot::new("timeline_plot")
+                .height(200.)
+                .width(ui.max_rect().width())
+                .allow_drag(false)
+                .allow_scroll(false)
+                .allow_zoom(false)
+                .legend(Legend::default().position(Corner::LeftTop))
+                .custom_x_axes(vec![]) // Remove the x-axis
+                .custom_y_axes(vec![]) // Remove the y-axis
+                .label_formatter(|team, point| {
+                    if !team.is_empty() {
+                        format!(
+                            "{}, {}\n{}",
+                            team,
+                            format_duration(Duration::from_secs_f64(point.x)),
+                            point.y
+                        )
+                    } else {
+                        String::default()
+                    }
+                });
+
+            plot.show(ui, |plot_ui| {
+                let points =
+                    r.analysis
+                        .team_scores_timeline
+                        .iter()
+                        .filter_map(|(time, team, score)| {
+                            if *team == Team::Allies {
+                                Some([time.offset.as_secs_f64(), *score as f64])
+                            } else {
+                                None
+                            }
+                        });
+
+                let line = Line::new(PlotPoints::from_iter(points))
+                    .color(ALLIES_COLOR)
+                    .name("Allies");
+                plot_ui.line(line);
+
+                let points =
+                    r.analysis
+                        .team_scores_timeline
+                        .iter()
+                        .filter_map(|(time, team, score)| {
+                            if *team == Team::Axis {
+                                Some([time.offset.as_secs_f64(), *score as f64])
+                            } else {
+                                None
+                            }
+                        });
+
+                let line = Line::new(PlotPoints::from_iter(points))
+                    .color(AXIS_COLOR)
+                    .name("Axis");
+                plot_ui.line(line);
+            });
+        });
+}
+
 fn rounds_ui(r: &Report, ui: &mut Ui) {
     CollapsingHeader::new("Rounds").show(ui, |ui| {
         let table = TableBuilder::new(ui)
@@ -446,9 +521,9 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
                                 ui.max_rect(),
                                 0.0,
                                 match winner_stats {
-                                    Some((Team::Allies, _)) => Color32::DARK_GREEN,
-                                    Some((Team::Axis, _)) => Color32::DARK_RED,
-                                    _ => Color32::WHITE,
+                                    Some((Team::Allies, _)) => ALLIES_COLOR,
+                                    Some((Team::Axis, _)) => AXIS_COLOR,
+                                    _ => NEUTRAL_COLOR,
                                 },
                             );
                         });

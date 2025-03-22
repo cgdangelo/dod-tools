@@ -616,7 +616,7 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
     TableBuilder::new(ui)
         .striped(true)
         .cell_layout(Layout::left_to_right(Align::Center))
-        .columns(Column::auto(), 3)
+        .columns(Column::auto(), 5)
         .header(TABLE_ROW_HEIGHT, |mut row| {
             row.col(|ui| {
                 ui.strong("Weapon");
@@ -625,7 +625,13 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
                 ui.strong("Kills");
             });
             row.col(|ui| {
+                ui.strong("% of Total");
+            });
+            row.col(|ui| {
                 ui.strong("Team Kills");
+            });
+            row.col(|ui| {
+                ui.strong("% of Total");
             });
         })
         .body(|mut body| {
@@ -642,27 +648,31 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
                     });
 
                     row.col(|ui| {
-                        ui.label(format!(
-                            "{} ({}%)",
-                            kills,
-                            if kills + total_kills > 0 {
-                                ((*kills as f32 / total_kills as f32) * 100.).floor()
-                            } else {
-                                0.
-                            }
-                        ));
+                        ui.label(format!("{}", kills));
                     });
 
                     row.col(|ui| {
-                        ui.label(format!(
-                            "{} ({}%)",
-                            teamkills,
-                            if teamkills + total_teamkills > 0 {
-                                ((*teamkills as f32 / total_teamkills as f32) * 100.).floor()
-                            } else {
-                                0.
-                            }
-                        ));
+                        let pct_of_total = if kills + total_kills > 0 {
+                            ((*kills as f32 / total_kills as f32) * 100.).floor()
+                        } else {
+                            0.
+                        };
+
+                        ui.label(format!("{}%", pct_of_total));
+                    });
+
+                    row.col(|ui| {
+                        ui.label(format!("{}", teamkills,));
+                    });
+
+                    row.col(|ui| {
+                        let pct_of_total = if teamkills + total_teamkills > 0 {
+                            ((*teamkills as f32 / total_teamkills as f32) * 100.).floor()
+                        } else {
+                            0.
+                        };
+
+                        ui.label(format!("{}%", pct_of_total));
                     });
                 });
             }

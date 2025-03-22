@@ -44,9 +44,14 @@ fn run_cli(args: Vec<String>) {
 
 #[tokio::main]
 async fn run_gui() {
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_maximized(true),
+        ..Default::default()
+    };
+
     eframe::run_native(
         env!("CARGO_PKG_NAME"),
-        eframe::NativeOptions::default(),
+        options,
         Box::new(|_cc| Ok(Box::<Gui>::default())),
     )
     .expect("Could not run the GUI");

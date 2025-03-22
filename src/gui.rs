@@ -237,7 +237,7 @@ fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut 
 
     ui.separator();
 
-    timeline_ui(r, ui);
+    team_score_timeline_ui(r, ui);
 
     ui.separator();
 
@@ -404,7 +404,7 @@ fn scoreboard_row_ui(
     });
 }
 
-fn timeline_ui(r: &Report, ui: &mut Ui) {
+fn team_score_timeline_ui(r: &Report, ui: &mut Ui) {
     CollapsingHeader::new("Timeline")
         .default_open(true)
         .show(ui, |ui| {
@@ -416,12 +416,10 @@ fn timeline_ui(r: &Report, ui: &mut Ui) {
                 .custom_y_axes(vec![]) // Remove the y-axis
                 .label_formatter(|team, point| {
                     if !team.is_empty() {
-                        format!(
-                            "{}, {}\n{}",
-                            team,
-                            format_duration(Duration::from_secs_f64(point.x)),
-                            point.y
-                        )
+                        let duration = Duration::from_secs_f64(point.x);
+                        let duration = Duration::new(duration.as_secs(), 0);
+
+                        format!("{}\n{}: {}", format_duration(duration), team, point.y)
                     } else {
                         String::default()
                     }
@@ -449,10 +447,10 @@ fn timeline_ui(r: &Report, ui: &mut Ui) {
                 plot_ui.line(line);
 
                 let points = team_line_points(Team::Axis);
-
                 let line = Line::new(PlotPoints::from_iter(points))
                     .color(AXIS_COLOR)
                     .name("Axis");
+
                 plot_ui.line(line);
             });
         });

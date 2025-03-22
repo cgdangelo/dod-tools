@@ -572,6 +572,39 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             };
         }
 
+        AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) => {
+            let killer = state.find_player_by_client_index(death_msg.killer_client_index - 1);
+            let victim = state.find_player_by_client_index(death_msg.victim_client_index - 1);
+
+            let kill_info = match (killer, victim) {
+                (Some(killer), Some(victim)) => Some((
+                    killer.team.clone(),
+                    killer.team.is_some() && killer.team == victim.team,
+                )),
+                _ => None,
+            };
+
+            if let (
+                Some(Round::Active {
+                    allies_kills,
+                    axis_kills,
+                    ..
+                }),
+                Some((team, is_teamkill)),
+            ) = (state.rounds.last_mut(), kill_info)
+            {
+                if is_teamkill {
+                    return;
+                }
+
+                if let Some(Team::Allies) = team {
+                    *allies_kills += 1;
+                } else {
+                    *axis_kills += 1;
+                }
+            }
+        }
+
         _ => {}
     };
 }

@@ -422,6 +422,7 @@ fn team_score_timeline_ui(r: &Report, ui: &mut Ui) {
         .default_open(true)
         .show(ui, |ui| {
             let plot = Plot::new("timeline_plot")
+                .allow_scroll(false)
                 .height(200.)
                 .width(ui.max_rect().width())
                 .legend(Legend::default().position(Corner::LeftTop))

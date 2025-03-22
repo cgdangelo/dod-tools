@@ -3,8 +3,8 @@ use crate::dod::Team;
 use crate::reporting::Report;
 use crate::run_analyzer;
 use egui::{
-    panel::Side, Align, CentralPanel, CollapsingHeader, Context, Frame, Grid, Label, Layout,
-    ProgressBar, ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
+    panel::Side, Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label,
+    Layout, ProgressBar, ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
@@ -401,12 +401,15 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
         let table = TableBuilder::new(ui)
             .striped(true)
             .cell_layout(Layout::left_to_right(Align::Center))
-            .columns(Column::auto(), 5);
+            .columns(Column::auto(), 6);
 
         table
             .header(TABLE_ROW_HEIGHT, |mut ui| {
                 ui.col(|ui| {
-                    ui.strong("Round");
+                    ui.add_space(ui.style().spacing.indent);
+                });
+                ui.col(|ui| {
+                    ui.strong("#");
                 });
                 ui.col(|ui| {
                     ui.strong("Start Time");
@@ -438,6 +441,18 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
                     match_duration += end_time.offset - start_time.offset;
 
                     ui.row(TABLE_ROW_HEIGHT, |mut row| {
+                        row.col(|ui| {
+                            ui.painter().rect_filled(
+                                ui.max_rect(),
+                                0.0,
+                                match winner_stats {
+                                    Some((Team::Allies, _)) => Color32::DARK_GREEN,
+                                    Some((Team::Axis, _)) => Color32::DARK_RED,
+                                    _ => Color32::WHITE,
+                                },
+                            );
+                        });
+
                         row.col(|ui| {
                             ui.label((i + 1).to_string());
                         });

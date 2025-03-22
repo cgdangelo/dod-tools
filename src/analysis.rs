@@ -220,11 +220,11 @@ pub fn frame_to_events(frame: &Frame) -> Vec<AnalyzerEvent> {
 }
 
 pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::TimeUpdate(frame_time_offset) = event {
-        if *frame_time_offset > 0. {
+    if let AnalyzerEvent::EngineMessage(EngineMessage::SvcTime(svc_time)) = event {
+        if svc_time.time > 0. {
             let mut next_time = state.current_time.clone();
 
-            next_time.offset = Duration::from_secs_f32(*frame_time_offset);
+            next_time.offset = Duration::from_secs_f32(svc_time.time);
 
             state.current_time = next_time;
         }

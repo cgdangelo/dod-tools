@@ -141,7 +141,6 @@ pub enum AnalyzerEvent<'a> {
     Initialization,
     EngineMessage(&'a EngineMessage),
     UserMessage(Message),
-    TimeUpdate(f32),
     Finalization,
 }
 
@@ -212,8 +211,6 @@ pub fn frame_to_events(frame: &Frame) -> Vec<AnalyzerEvent> {
                 }
             }
         }
-    } else {
-        events.push(AnalyzerEvent::TimeUpdate(frame.time));
     }
 
     events
@@ -513,7 +510,6 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
                     Round::Active { .. } => {
                         println!("\tRound #{} {:?} round", i + 1, round)
                     }
-                    _ => {}
                 }
             }
         }

@@ -222,7 +222,7 @@ const ALLIES_COLOR: Color32 = Color32::DARK_GREEN;
 
 const AXIS_COLOR: Color32 = Color32::DARK_RED;
 
-const NEUTRAL_COLOR: Color32 = Color32::PLACEHOLDER;
+const NEUTRAL_COLOR: Color32 = Color32::WHITE;
 
 fn get_report_title(r: &Report) -> String {
     format!("{} ({})", &r.file_info.name, &r.demo_info.map_name)

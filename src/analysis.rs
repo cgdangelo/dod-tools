@@ -495,20 +495,25 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             );
 
             for (i, round) in state.rounds.iter().enumerate() {
-                if let Round::Completed {
-                    start_time,
-                    end_time,
-                    winner_stats,
-                } = round
-                {
-                    println!(
-                        "\tRound #{}: start={:<20?} end={:<20?} dur={} winner={:?}",
-                        i + 1,
-                        start_time.offset,
-                        end_time.offset,
-                        format_duration(end_time.offset - start_time.offset),
-                        winner_stats
-                    );
+                match round {
+                    Round::Completed {
+                        start_time,
+                        end_time,
+                        winner_stats,
+                    } => {
+                        println!(
+                            "\tRound #{}: start={:<20?} end={:<20?} dur={} winner={:?}",
+                            i + 1,
+                            start_time.offset,
+                            end_time.offset,
+                            format_duration(end_time.offset - start_time.offset),
+                            winner_stats
+                        );
+                    }
+                    Round::Active { .. } => {
+                        println!("\tRound #{} {:?} round", i + 1, round)
+                    }
+                    _ => {}
                 }
             }
         }
@@ -609,7 +614,11 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     };
 }
 
-pub fn use_clan_match_detection_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+pub fn use_clan_match_detection_updates(
+    max_normal_duration_from_reset: Duration,
+    state: &mut AnalyzerState,
+    event: &AnalyzerEvent,
+) {
     if let AnalyzerEvent::UserMessage(Message::ClanTimer(_)) = event {
         // Match is already live, but we observed a ClanTimer. We infer that match is restarting.
         if let ClanMatchDetection::MatchIsLive = state.clan_match_detection {
@@ -670,5 +679,15 @@ pub fn use_clan_match_detection_updates(state: &mut AnalyzerState, event: &Analy
 
             _ => {}
         }
-    };
+    } else if let ClanMatchDetection::WaitingForNormal { reset_time } = &state.clan_match_detection
+    {
+        if state.current_time.offset - reset_time.offset > max_normal_duration_from_reset {
+            println!(
+                "t={:<20?} Reached normal threshold, ignoring previous reset",
+                state.current_time.offset,
+            );
+
+            state.clan_match_detection = ClanMatchDetection::WaitingForReset;
+        }
+    }
 }

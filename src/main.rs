@@ -69,7 +69,7 @@ fn run_analyzer(demo_path: &PathBuf) -> Report {
         use_weapon_breakdown_updates(&mut state, event);
         use_team_score_updates(&mut state, event);
         use_rounds_updates(&mut state, event);
-        use_clan_match_detection_updates(&mut state, event);
+        use_clan_match_detection_updates(Duration::from_secs(10), &mut state, event);
 
         state
     });

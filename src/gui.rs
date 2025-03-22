@@ -424,6 +424,8 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
             .body(|mut ui| {
                 let mut rounds = r.analysis.rounds.iter().enumerate();
 
+                let mut match_duration = Duration::default();
+
                 while let Some((
                     i,
                     Round::Completed {
@@ -433,6 +435,8 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
                     },
                 )) = rounds.next()
                 {
+                    match_duration += end_time.offset - start_time.offset;
+
                     ui.row(TABLE_ROW_HEIGHT, |mut row| {
                         row.col(|ui| {
                             ui.label((i + 1).to_string());
@@ -471,6 +475,15 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
                         }
                     });
                 }
+
+                ui.row(TABLE_ROW_HEIGHT, |mut row| {
+                    row.col(|_| {});
+                    row.col(|_| {});
+                    row.col(|ui| {
+                        ui.label(format_duration(match_duration).to_string());
+                    });
+                    row.col(|_| {});
+                });
             });
     });
 }

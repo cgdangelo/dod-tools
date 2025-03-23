@@ -167,7 +167,7 @@ impl eframe::App for Gui {
                 });
         }
 
-        if !self.open_reports.is_empty() {
+        if !self.reports.is_empty() {
             SidePanel::new(Side::Left, "open_reports")
                 .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
                 .show(ctx, |ui| {

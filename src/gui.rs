@@ -124,7 +124,7 @@ impl eframe::App for Gui {
                     ui,
                     |ui| {
                         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                            ui.menu_button("File", |ui| {
+                            ui.menu_button("File ⏷", |ui| {
                                 if ui.button("Open").clicked() {
                                     self.file_picker.pick_multiple();
                                 }

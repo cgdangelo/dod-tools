@@ -4,7 +4,7 @@ use crate::reporting::Report;
 use crate::run_analyzer;
 use egui::{
     panel::Side, Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label,
-    Layout, ProgressBar, ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
+    Layout, ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window,
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
@@ -120,32 +120,40 @@ impl eframe::App for Gui {
         TopBottomPanel::top("controls")
             .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
             .show(ctx, |ui| {
-                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Open").clicked() {
-                            self.file_picker.pick_multiple();
-                        }
+                Sides::default().show(
+                    ui,
+                    |ui| {
+                        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                            ui.menu_button("File", |ui| {
+                                if ui.button("Open").clicked() {
+                                    self.file_picker.pick_multiple();
+                                }
 
-                        ui.separator();
+                                ui.separator();
 
-                        if ui.button("Quit").clicked() {
-                            std::process::exit(0);
-                        }
-                    });
+                                if ui.button("Quit").clicked() {
+                                    std::process::exit(0);
+                                }
+                            });
 
-                    if !self.reports.is_empty() {
-                        ui.separator();
+                            if !self.reports.is_empty() {
+                                ui.separator();
 
-                        if ui.button("Clear Memory").clicked() {
-                            self.open_reports.clear();
-                            self.reports.clear();
-                        }
+                                if ui.button("Clear memory").clicked() {
+                                    self.open_reports.clear();
+                                    self.reports.clear();
+                                }
 
-                        if ui.button("Organize Windows").clicked() {
-                            ctx.memory_mut(|mem| mem.reset_areas());
-                        }
-                    };
-                });
+                                if ui.button("Organize windows").clicked() {
+                                    ctx.memory_mut(|mem| mem.reset_areas());
+                                }
+                            };
+                        });
+                    },
+                    |ui| {
+                        egui::widgets::global_theme_preference_buttons(ui);
+                    },
+                );
             });
 
         if let Some(batch_progress) = self.batch_progress {

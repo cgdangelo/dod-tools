@@ -344,7 +344,7 @@ pub struct Objective {
     pub neutral_icon_index: u8,
     pub allies_icon_index: u8,
     pub axis_icon_index: u8,
-    pub origin: (u8, u8),
+    pub origin: (i16, i16),
 }
 
 /// - Length: varies
@@ -994,17 +994,17 @@ fn init_hud(i: &[u8]) -> IResult<&[u8], InitHUD> {
 }
 
 fn init_obj(i: &[u8]) -> IResult<&[u8], InitObj> {
-    // likely inaccurate?
     let objective = |i| -> IResult<&[u8], Objective> {
         (
             le_u16,
             le_u8,
-            opt(team),
+            // opt does not consume if the parser fails, find a better way to do this
+            alt((team.map(Some), tag("\x00").map(|_| None))),
             le_u8,
             le_u8,
             le_u8,
             le_u8,
-            (le_u8, le_u8),
+            (le_i16, le_i16),
         )
             .map(
                 |(

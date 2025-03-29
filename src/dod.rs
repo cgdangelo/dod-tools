@@ -2,10 +2,10 @@
 
 use dem::types::UserMessage;
 use nom::{
-    branch::alt, bytes::complete::{tag, take_until},
+    branch::alt, bytes::complete::{tag, take, take_until},
     combinator::{all_consuming, eof, fail, opt, success},
     multi::{length_count, many0},
-    number::complete::{le_i16, le_i8, le_u16, le_u8},
+    number::complete::{le_i16, le_i32, le_i8, le_u16, le_u8},
     sequence::terminated,
     IResult,
     Parser,
@@ -549,9 +549,8 @@ pub struct SetFOV(pub u8);
 /// - Value: (0..4, 0..2, 0)
 #[derive(Debug)]
 pub struct SetObj {
-    pub client_index: u8,
-    pub team: Team,
-    _unk1: u8,
+    pub area_index: u8,
+    pub team: Option<Team>,
 }
 
 /// - Length: varies
@@ -588,7 +587,7 @@ pub struct StartProgF {
 
 /// - Value: 0..100 (health?)
 #[derive(Debug)]
-pub struct StatusValue {}
+pub struct StatusValue(pub u8);
 
 /// Sent when a team scores points either by objective or tick.
 ///
@@ -631,7 +630,10 @@ pub struct UseSound {
 pub struct VGUIMenu {}
 
 #[derive(Debug)]
-pub struct VoiceMask {}
+pub struct VoiceMask {
+    audible_players: i32,
+    banned_players: i32,
+}
 
 /// Sent when the state of the reinforcements timer changes.
 #[derive(Debug)]
@@ -821,15 +823,19 @@ impl TryFrom<&UserMessage> for Message {
             "ScoreShort" => score_short.map(Self::ScoreShort).parse(i),
             "ServerName" => server_name.map(Self::ServerName).parse(i),
             "SetFOV" => set_fov.map(Self::SetFOV).parse(i),
+            "SetObj" => set_obj.map(Self::SetObj).parse(i),
             "Spectator" => spectator.map(Self::Spectator).parse(i),
             "StartProg" => start_prog.map(Self::StartProg).parse(i),
+            "StatusValue" => status_value.map(Self::StatusValue).parse(i),
             "TeamScore" => team_score.map(Self::TeamScore).parse(i),
             "TextMsg" => text_msg.map(Self::TextMsg).parse(i),
             "TimeLeft" => time_left.map(Self::TimeLeft).parse(i),
             "UseSound" => use_sound.map(Self::UseSound).parse(i),
+            "VoiceMask" => voice_mask.map(Self::VoiceMask).parse(i),
             "WaveStatus" => wave_status.map(Self::WaveStatus).parse(i),
             "WaveTime" => wave_time.map(Self::WaveTime).parse(i),
             "WeaponList" => weapon_list.map(Self::WeaponList).parse(i),
+            "YouDied" => you_died.map(Self::YouDied).parse(i),
             _ => fail::<&[u8], Message, _>().parse(i),
         }
         .map_err(|_| ())?;
@@ -1148,6 +1154,16 @@ fn set_fov(i: &[u8]) -> IResult<&[u8], SetFOV> {
     le_u8.map(SetFOV).parse(i)
 }
 
+fn set_obj(i: &[u8]) -> IResult<&[u8], SetObj> {
+    all_consuming((
+        le_u8,
+        alt((team.map(Some), tag("\x00").map(|_| None))),
+        le_u8,
+    ))
+    .map(|(area_index, team, _)| SetObj { area_index, team })
+    .parse(i)
+}
+
 fn spectator(i: &[u8]) -> IResult<&[u8], Spectator> {
     all_consuming((le_u8, le_u8.map(|v| v != 0)))
         .map(|(client_index, is_spectator)| Spectator {
@@ -1165,6 +1181,10 @@ fn start_prog(i: &[u8]) -> IResult<&[u8], StartProg> {
             cap_duration,
         })
         .parse(i)
+}
+
+fn status_value(i: &[u8]) -> IResult<&[u8], StatusValue> {
+    all_consuming(le_u8).map(StatusValue).parse(i)
 }
 
 fn team_score(i: &[u8]) -> IResult<&[u8], TeamScore> {
@@ -1205,6 +1225,15 @@ fn time_left(i: &[u8]) -> IResult<&[u8], TimeLeft> {
 fn use_sound(i: &[u8]) -> IResult<&[u8], UseSound> {
     all_consuming(le_u8.map(|v| v != 0))
         .map(|is_button_pressed| UseSound { is_button_pressed })
+        .parse(i)
+}
+
+fn voice_mask(i: &[u8]) -> IResult<&[u8], VoiceMask> {
+    all_consuming((le_i32, le_i32))
+        .map(|(audible_players, banned_players)| VoiceMask {
+            audible_players,
+            banned_players,
+        })
         .parse(i)
 }
 
@@ -1254,4 +1283,8 @@ fn weapon_list(i: &[u8]) -> IResult<&[u8], WeaponList> {
         },
     )
     .parse(i)
+}
+
+fn you_died(i: &[u8]) -> IResult<&[u8], YouDied> {
+    all_consuming(take(1usize)).map(|_| YouDied {}).parse(i)
 }

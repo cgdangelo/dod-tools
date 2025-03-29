@@ -4,7 +4,6 @@ use humantime::format_duration;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::str::from_utf8;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
@@ -264,7 +263,9 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     };
 
     if let Some(svc_update_user_info) = svc_update_user_info {
-        let fields = from_utf8(&svc_update_user_info.user_info)
+        let fields = svc_update_user_info
+            .user_info
+            .to_str()
             .map(|s| s.trim_matches(['\0', '\\']).split("\\").collect::<Vec<_>>())
             .unwrap_or_default()
             .chunks_exact(2)

@@ -103,8 +103,14 @@ fn run_analyzer(demo_path: &PathBuf) -> Report {
         path: demo_path.to_str().map(String::from).unwrap(),
     };
 
-    let map_name = String::from_utf8(demo.header.map_name).unwrap();
-    let map_name = map_name.trim_end_matches('\x00').to_string();
+    let map_name = demo
+        .header
+        .map_name
+        .to_str()
+        .map(|s| s.trim_end_matches('\x00'))
+        .unwrap()
+        .to_string();
+
     let demo_info = DemoInfo {
         demo_protocol: demo.header.demo_protocol,
         map_name,

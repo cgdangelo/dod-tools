@@ -443,11 +443,8 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
             // End the current streak by adding a new record
             victim.kill_streaks.push(KillStreak::default());
         }
-    } else if let AnalyzerEvent::UserMessage(Message::RoundState(
-        RoundState::AlliesWin | RoundState::AxisWin,
-    )) = event
-    {
-        // Active kill streaks must be terminated when all objectives are captured
+    } else if let AnalyzerEvent::UserMessage(Message::RoundState(RoundState::Reset)) = event {
+        // Active kill streaks must be terminated when round is reset (i.e., after all objectives are captured)
         for player in state.players.iter_mut() {
             player.kill_streaks.push(KillStreak::default());
         }

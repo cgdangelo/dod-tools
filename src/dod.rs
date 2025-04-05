@@ -204,12 +204,11 @@ pub struct CapMsg {
 
 /// Sent when the countdown to a clan match begins.
 ///
-/// - Value: `mp_clan_timer`
+/// Value is equivalent to the `mp_clan_timer` CVAR.
 #[derive(Debug)]
 pub struct ClanTimer(pub Duration);
 
-/// - Frequency: unknown trigger; often
-/// - Length: variable
+/// Sent when the client should spawn a corpse at a given location.
 #[derive(Debug)]
 pub struct ClCorpse {
     pub model_name: String,
@@ -838,7 +837,9 @@ impl TryFrom<&UserMessage> for Message {
             "YouDied" => you_died.map(Self::YouDied).parse(i),
             _ => fail::<&[u8], Message, _>().parse(i),
         }
-        .map_err(|_| ())?;
+        .map_err(|e| {
+            eprintln!("{} i={:?} | e={:?}", message_name, i, e);
+        })?;
 
         Ok(message)
     }
@@ -1060,7 +1061,7 @@ fn obj_score(i: &[u8]) -> IResult<&[u8], ObjScore> {
 }
 
 fn p_class(i: &[u8]) -> IResult<&[u8], PClass> {
-    (le_u8, class)
+    all_consuming((le_u8, class))
         .map(|(client_index, class)| PClass {
             client_index,
             class,
@@ -1109,7 +1110,7 @@ fn reset_sens(i: &[u8]) -> IResult<&[u8], ResetSens> {
 }
 
 fn round_state(i: &[u8]) -> IResult<&[u8], RoundState> {
-    le_u8
+    all_consuming(le_u8)
         .map_res(|team_id| match team_id {
             0 => Ok(RoundState::Reset),
             1 => Ok(RoundState::Normal),
@@ -1151,7 +1152,7 @@ fn server_name(i: &[u8]) -> IResult<&[u8], ServerName> {
 }
 
 fn set_fov(i: &[u8]) -> IResult<&[u8], SetFOV> {
-    le_u8.map(SetFOV).parse(i)
+    all_consuming(le_u8).map(SetFOV).parse(i)
 }
 
 fn set_obj(i: &[u8]) -> IResult<&[u8], SetObj> {
@@ -1242,7 +1243,7 @@ fn wave_status(i: &[u8]) -> IResult<&[u8], WaveStatus> {
 }
 
 fn wave_time(i: &[u8]) -> IResult<&[u8], WaveTime> {
-    le_u8
+    all_consuming(le_u8)
         .map(|seconds| {
             let duration = Duration::from_secs(seconds as u64);
 

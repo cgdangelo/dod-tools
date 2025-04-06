@@ -3,10 +3,10 @@
 use crate::cli::Cli;
 use crate::gui::Gui;
 use analysis::{
-    frame_to_events, use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates, use_rounds_updates, use_scoreboard_updates,
-    use_team_score_updates, use_timing_updates, use_weapon_breakdown_updates,
-    Analysis, AnalyzerEvent, AnalyzerState, DemoInfo,
-    FileInfo,
+    Analysis, AnalyzerEvent, AnalyzerState, DemoInfo, FileInfo, frame_to_events,
+    use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates,
+    use_rounds_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates,
+    use_weapon_breakdown_updates,
 };
 use dem::open_demo;
 use filetime::FileTime;

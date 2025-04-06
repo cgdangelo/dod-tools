@@ -2,13 +2,13 @@
 
 use dem::types::UserMessage;
 use nom::{
-    branch::alt, bytes::complete::{tag, take, take_until},
+    IResult, Parser,
+    branch::alt,
+    bytes::complete::{tag, take, take_until},
     combinator::{all_consuming, eof, fail, opt, success},
     multi::{length_count, many0},
-    number::complete::{le_i16, le_i32, le_i8, le_u16, le_u8},
+    number::complete::{le_i8, le_i16, le_i32, le_u8, le_u16},
     sequence::terminated,
-    IResult,
-    Parser,
 };
 use std::time::Duration;
 

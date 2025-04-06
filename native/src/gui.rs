@@ -1,8 +1,8 @@
 use crate::run_analyzer;
 use analysis::{Analysis, Player, PlayerGlobalId, Round, Team};
 use egui::{
-    panel::Side, Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label,
-    Layout, ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window,
+    Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label, Layout,
+    ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window, panel::Side,
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
 pub struct Gui {

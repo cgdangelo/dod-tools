@@ -1,4 +1,4 @@
-use crate::run_analyzer;
+use crate::{FileInfo, run_analyzer};
 use analysis::{Analysis, Player, PlayerGlobalId, Round, Team};
 use egui::{
     Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label, Layout,
@@ -16,7 +16,7 @@ use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
 pub struct Gui {
-    analyses: Vec<Analysis>,
+    analyses: Vec<(FileInfo, Analysis)>,
     batch_progress: Option<(usize, usize)>,
     file_picker: FileDialog,
     open_windows: HashSet<String>,
@@ -39,8 +39,9 @@ enum GuiMessage {
     },
 
     AnalyzerProgress {
+        analysis: Box<Analysis>,
+        file_info: FileInfo,
         progress: (usize, usize),
-        report: Box<Analysis>,
     },
 }
 
@@ -90,15 +91,21 @@ impl eframe::App for Gui {
             Ok(GuiMessage::Idle) => {
                 self.batch_progress = None;
             }
+
             Ok(GuiMessage::AnalyzerStart { files }) => {
                 self.batch_progress = Some((0, files));
             }
-            Ok(GuiMessage::AnalyzerProgress { progress, report }) => {
+
+            Ok(GuiMessage::AnalyzerProgress {
+                file_info,
+                progress,
+                analysis,
+            }) => {
                 self.batch_progress = Some(progress);
 
-                self.open_windows.insert(report.file_info.path.clone());
+                self.open_windows.insert(file_info.path.clone());
 
-                self.analyses.push(*report);
+                self.analyses.push((file_info, *analysis));
             }
             _ => {}
         }
@@ -121,7 +128,7 @@ impl eframe::App for Gui {
                         !self
                             .analyses
                             .iter()
-                            .any(|report| report.file_info.path == path)
+                            .any(|(file_info, _)| file_info.path == path)
                     } else {
                         false
                     }
@@ -198,8 +205,8 @@ impl eframe::App for Gui {
                         ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                             let mut reports = self.analyses.iter().peekable();
 
-                            while let Some(r) = reports.next() {
-                                let title = r.file_info.path.clone();
+                            while let Some((file_info, _)) = reports.next() {
+                                let title = file_info.path.clone();
                                 let mut is_open = self.open_windows.contains(&title);
 
                                 ui.toggle_value(&mut is_open, &title);
@@ -230,16 +237,16 @@ impl eframe::App for Gui {
                 }
             });
 
-            for r in &self.analyses {
-                let demo_path = &r.file_info.path;
+            for (file_info, analysis) in &self.analyses {
+                let demo_path = &file_info.path;
                 let mut is_open = self.open_windows.contains(demo_path);
 
-                Window::new(&r.file_info.name)
+                Window::new(&file_info.name)
                     .id(demo_path.clone().into())
                     .default_height(600.)
                     .open(&mut is_open)
                     .show(ctx, |ui| {
-                        report_ui(r, &mut self.player_highlight, ui);
+                        report_ui(file_info, analysis, &mut self.player_highlight, ui);
                     });
 
                 if !is_open {
@@ -260,8 +267,13 @@ const AXIS_COLOR: Color32 = Color32::DARK_RED;
 
 const NEUTRAL_COLOR: Color32 = Color32::WHITE;
 
-fn report_ui(r: &Analysis, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
-    header_ui(r, ui);
+fn report_ui(
+    file_info: &FileInfo,
+    r: &Analysis,
+    player_highlighting: &mut PlayerHighlighting,
+    ui: &mut Ui,
+) {
+    header_ui(file_info, r, ui);
 
     ui.separator();
 
@@ -280,29 +292,29 @@ fn report_ui(r: &Analysis, player_highlighting: &mut PlayerHighlighting, ui: &mu
     player_summaries_ui(r, player_highlighting, ui);
 }
 
-fn header_ui(r: &Analysis, ui: &mut Ui) {
+fn header_ui(file_info: &FileInfo, analysis: &Analysis, ui: &mut Ui) {
     CollapsingHeader::new("Summary")
         .default_open(true)
         .show(ui, |ui| {
             Grid::new("header").show(ui, |ui| {
                 ui.strong("File path");
-                ui.monospace(&r.file_info.path);
+                ui.monospace(&file_info.path);
                 ui.end_row();
 
                 ui.strong("File created at");
-                ui.label(format_rfc3339_seconds(r.file_info.created_at).to_string());
+                ui.label(format_rfc3339_seconds(file_info.created_at).to_string());
                 ui.end_row();
 
                 ui.strong("Map name");
-                ui.label(&r.demo_info.map_name);
+                ui.label(&analysis.demo_info.map_name);
                 ui.end_row();
 
                 ui.strong("Demo protocol");
-                ui.label(r.demo_info.demo_protocol.to_string());
+                ui.label(analysis.demo_info.demo_protocol.to_string());
                 ui.end_row();
 
                 ui.strong("Network protocol");
-                ui.label(r.demo_info.network_protocol.to_string());
+                ui.label(analysis.demo_info.network_protocol.to_string());
                 ui.end_row();
 
                 ui.strong("Analyzer version");
@@ -779,12 +791,13 @@ fn analyze_files_async(ctx: Context, tx: mpsc::Sender<GuiMessage>, paths: Vec<Pa
         tx.send(GuiMessage::AnalyzerStart { files: paths.len() })
             .unwrap();
 
-        for (index, file) in paths.iter().enumerate() {
-            let report = run_analyzer(file);
+        for (index, demo_path) in paths.iter().enumerate() {
+            let (file_info, analysis) = run_analyzer(demo_path);
 
             tx.send(GuiMessage::AnalyzerProgress {
+                file_info,
                 progress: (index + 1, paths.len()),
-                report: Box::new(report),
+                analysis: Box::new(analysis),
             })
             .unwrap();
 

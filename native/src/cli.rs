@@ -1,4 +1,4 @@
-use crate::run_analyzer;
+use crate::{FileInfo, run_analyzer};
 use analysis::{Analysis, Round, Team};
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
@@ -17,19 +17,19 @@ impl Cli {
             }
 
             let demo_path = PathBuf::from(arg);
-            let analysis = run_analyzer(&demo_path);
+            let (file_info, analysis) = run_analyzer(&demo_path);
 
-            println!("{}", Markdown(analysis));
+            println!("{}", Markdown(file_info, analysis));
         }
     }
 }
 
-pub struct Markdown(pub Analysis);
+pub struct Markdown(pub FileInfo, pub Analysis);
 
 impl Display for Markdown {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Players sorted by team then kills
-        let mut ordered_players = Vec::from_iter(&self.0.state.players);
+        let mut ordered_players = Vec::from_iter(&self.1.state.players);
 
         ordered_players.sort_by(|left, right| match (&left.team, &right.team) {
             (Some(left_team), Some(right_team)) if left_team == right_team => {
@@ -45,17 +45,17 @@ impl Display for Markdown {
 
         // Header section
         {
-            let file_name = &self.0.file_info.name;
-            let map_name = &self.0.demo_info.map_name;
+            let file_name = &self.0.name;
+            let map_name = &self.1.demo_info.map_name;
             writeln!(f, "# Summary: {} on {}\n", file_name, map_name)?;
 
-            let file_path = &self.0.file_info.path;
+            let file_path = &self.0.path;
             writeln!(f, "- File path: `{}`", file_path)?;
-            let file_created_at = format_rfc3339_seconds(self.0.file_info.created_at);
+            let file_created_at = format_rfc3339_seconds(self.0.created_at);
             writeln!(f, "- File created at: {}", file_created_at)?;
-            let demo_protocol = &self.0.demo_info.demo_protocol;
+            let demo_protocol = &self.1.demo_info.demo_protocol;
             writeln!(f, "- Demo protocol: {}", demo_protocol)?;
-            let network_protocol = &self.0.demo_info.network_protocol;
+            let network_protocol = &self.1.demo_info.network_protocol;
             writeln!(f, "- Network protocol: {}", network_protocol)?;
             let app_version = env!("CARGO_PKG_VERSION");
             writeln!(f, "- Analyzer version: {}", app_version)?;
@@ -92,8 +92,8 @@ impl Display for Markdown {
             }
 
             let (allies_score, axis_score) = (
-                self.0.state.team_scores.get_team_score(Team::Allies),
-                self.0.state.team_scores.get_team_score(Team::Axis),
+                self.1.state.team_scores.get_team_score(Team::Allies),
+                self.1.state.team_scores.get_team_score(Team::Axis),
             );
 
             let match_result_fragment = format!(
@@ -124,7 +124,7 @@ impl Display for Markdown {
                 "Kills by Winner",
             ]);
 
-            let mut rounds = self.0.state.rounds.iter().enumerate();
+            let mut rounds = self.1.state.rounds.iter().enumerate();
 
             while let Some((
                 i,

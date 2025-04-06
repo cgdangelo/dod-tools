@@ -3,7 +3,7 @@
 use crate::cli::Cli;
 use crate::gui::Gui;
 use analysis::{
-    Analysis, AnalyzerEvent, AnalyzerState, DemoInfo, FileInfo, frame_to_events,
+    Analysis, AnalyzerEvent, AnalyzerState, DemoInfo, frame_to_events,
     use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates,
     use_rounds_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates,
     use_weapon_breakdown_updates,
@@ -28,7 +28,13 @@ fn main() {
     }
 }
 
-fn run_analyzer(demo_path: &PathBuf) -> Analysis {
+pub struct FileInfo {
+    pub created_at: SystemTime,
+    pub name: String,
+    pub path: String,
+}
+
+fn run_analyzer(demo_path: &PathBuf) -> (FileInfo, Analysis) {
     let demo = open_demo(demo_path).expect("Could not parse the demo");
 
     let events = vec![AnalyzerEvent::Initialization].into_iter().chain(
@@ -88,9 +94,10 @@ fn run_analyzer(demo_path: &PathBuf) -> Analysis {
         network_protocol: demo.header.network_protocol,
     };
 
-    Analysis {
+    let analysis = Analysis {
         state: analysis,
-        file_info,
         demo_info,
-    }
+    };
+
+    (file_info, analysis)
 }

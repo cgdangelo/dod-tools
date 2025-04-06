@@ -3,7 +3,7 @@ use dod::{Class, Message, RoundState, Weapon};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -157,15 +157,8 @@ pub struct DemoInfo {
     pub map_name: String,
 }
 
-pub struct FileInfo {
-    pub created_at: SystemTime,
-    pub name: String,
-    pub path: String,
-}
-
 pub struct Analysis {
     pub demo_info: DemoInfo,
-    pub file_info: FileInfo,
     pub state: AnalyzerState,
 }
 

@@ -852,25 +852,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dod-tools"
-version = "0.5.1"
-dependencies = [
- "analysis",
- "dem",
- "dod",
- "eframe",
- "egui",
- "egui-file-dialog",
- "egui_extras",
- "egui_plot",
- "filetime",
- "humantime",
- "tabled",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1972,6 +1953,23 @@ dependencies = [
  "termcolor",
  "thiserror 2.0.12",
  "unicode-xid",
+]
+
+[[package]]
+name = "native"
+version = "0.5.1"
+dependencies = [
+ "analysis",
+ "dem",
+ "eframe",
+ "egui",
+ "egui-file-dialog",
+ "egui_extras",
+ "egui_plot",
+ "filetime",
+ "humantime",
+ "tabled",
+ "tokio",
 ]
 
 [[package]]

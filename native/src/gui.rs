@@ -44,6 +44,23 @@ enum GuiMessage {
     },
 }
 
+impl Gui {
+    #[tokio::main]
+    pub async fn run() {
+        let options = eframe::NativeOptions {
+            viewport: egui::ViewportBuilder::default().with_maximized(true),
+            ..Default::default()
+        };
+
+        eframe::run_native(
+            "dod-tools",
+            options,
+            Box::new(|_cc| Ok(Box::<Gui>::default())),
+        )
+        .expect("Could not run the GUI");
+    }
+}
+
 impl Default for Gui {
     fn default() -> Self {
         let (tx, rx) = mpsc::channel();

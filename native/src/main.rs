@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use crate::cli::Cli;
 use crate::gui::Gui;
 use analysis::{
     frame_to_events, use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates, use_rounds_updates, use_scoreboard_updates,
@@ -14,45 +15,17 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
+mod cli;
 mod gui;
-mod reporting;
 
 fn main() {
     let args = args().collect::<Vec<_>>();
 
     if args.contains(&"--cli".to_string()) {
-        run_cli(args)
+        Cli::run(args)
     } else {
-        run_gui()
+        Gui::run()
     }
-}
-
-fn run_cli(args: Vec<String>) {
-    for arg in &args[1..] {
-        if arg == "--cli" {
-            continue;
-        }
-
-        let demo_path = PathBuf::from(arg);
-        let analysis = run_analyzer(&demo_path);
-
-        println!("{}", reporting::Markdown(analysis));
-    }
-}
-
-#[tokio::main]
-async fn run_gui() {
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_maximized(true),
-        ..Default::default()
-    };
-
-    eframe::run_native(
-        env!("CARGO_PKG_NAME"),
-        options,
-        Box::new(|_cc| Ok(Box::<Gui>::default())),
-    )
-    .expect("Could not run the GUI");
 }
 
 fn run_analyzer(demo_path: &PathBuf) -> Analysis {

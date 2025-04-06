@@ -1,9 +1,28 @@
+use crate::run_analyzer;
 use analysis::{Analysis, Round, Team};
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 use tabled::{builder::Builder, settings::Style};
+
+pub struct Cli;
+
+impl Cli {
+    pub fn run(args: Vec<String>) {
+        for arg in &args[1..] {
+            if arg == "--cli" {
+                continue;
+            }
+
+            let demo_path = PathBuf::from(arg);
+            let analysis = run_analyzer(&demo_path);
+
+            println!("{}", Markdown(analysis));
+        }
+    }
+}
 
 pub struct Markdown(pub Analysis);
 

@@ -1,4 +1,4 @@
-use crate::dod::{Class, Message, RoundState, Team, Weapon};
+use crate::dod::{Class, Message, RoundState, Weapon};
 use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
 use humantime::format_duration;
 use std::collections::HashMap;
@@ -169,6 +169,8 @@ pub struct Analysis {
     pub file_info: FileInfo,
     pub state: AnalyzerState,
 }
+
+pub use dod::Team;
 
 #[derive(Debug, Default)]
 pub struct TeamScores {

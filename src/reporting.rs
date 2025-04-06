@@ -1,5 +1,4 @@
-use crate::analysis::{Analysis, Round};
-use crate::dod::Team;
+use crate::analysis::{Analysis, Round, Team};
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};

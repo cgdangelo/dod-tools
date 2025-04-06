@@ -1,6 +1,5 @@
-use crate::analysis::{Analysis, Player, PlayerGlobalId, Round};
+use crate::analysis::{Analysis, Player, PlayerGlobalId, Round, Team};
 use crate::run_analyzer;
-use dod::Team;
 use egui::{
     panel::Side, Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label,
     Layout, ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window,

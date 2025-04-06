@@ -1,4 +1,4 @@
-use crate::analysis::{AnalyzerState, Round};
+use crate::analysis::{Analysis, Round};
 use crate::dod::Team;
 use humantime::{format_duration, format_rfc3339_seconds};
 use std::cmp::Ordering;
@@ -6,28 +6,10 @@ use std::fmt::{Display, Formatter};
 use std::time::{Duration, SystemTime};
 use tabled::{builder::Builder, settings::Style};
 
-pub struct DemoInfo {
-    pub demo_protocol: i32,
-    pub network_protocol: i32,
-    pub map_name: String,
-}
-
-pub struct FileInfo {
-    pub created_at: SystemTime,
-    pub name: String,
-    pub path: String,
-}
-
-pub struct Report {
-    pub analysis: AnalyzerState,
-    pub demo_info: DemoInfo,
-    pub file_info: FileInfo,
-}
-
-impl Display for Report {
+impl Display for Analysis {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Players sorted by team then kills
-        let mut ordered_players = Vec::from_iter(&self.analysis.players);
+        let mut ordered_players = Vec::from_iter(&self.state.players);
 
         ordered_players.sort_by(|left, right| match (&left.team, &right.team) {
             (Some(left_team), Some(right_team)) if left_team == right_team => {
@@ -90,8 +72,8 @@ impl Display for Report {
             }
 
             let (allies_score, axis_score) = (
-                self.analysis.team_scores.get_team_score(Team::Allies),
-                self.analysis.team_scores.get_team_score(Team::Axis),
+                self.state.team_scores.get_team_score(Team::Allies),
+                self.state.team_scores.get_team_score(Team::Axis),
             );
 
             let match_result_fragment = format!(
@@ -122,7 +104,7 @@ impl Display for Report {
                 "Kills by Winner",
             ]);
 
-            let mut rounds = self.analysis.rounds.iter().enumerate();
+            let mut rounds = self.state.rounds.iter().enumerate();
 
             while let Some((
                 i,

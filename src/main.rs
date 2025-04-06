@@ -6,7 +6,7 @@ use crate::analysis::{
     use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
 };
 use crate::gui::Gui;
-use crate::reporting::{DemoInfo, FileInfo, Report};
+use analysis::{Analysis, DemoInfo, FileInfo};
 use dem::open_demo;
 use filetime::FileTime;
 use std::env::args;
@@ -57,7 +57,7 @@ async fn run_gui() {
     .expect("Could not run the GUI");
 }
 
-fn run_analyzer(demo_path: &PathBuf) -> Report {
+fn run_analyzer(demo_path: &PathBuf) -> Analysis {
     let demo = open_demo(demo_path).expect("Could not parse the demo");
 
     let events = vec![AnalyzerEvent::Initialization].into_iter().chain(
@@ -117,8 +117,8 @@ fn run_analyzer(demo_path: &PathBuf) -> Report {
         network_protocol: demo.header.network_protocol,
     };
 
-    Report {
-        analysis,
+    Analysis {
+        state: analysis,
         file_info,
         demo_info,
     }

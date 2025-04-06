@@ -4,7 +4,7 @@ use humantime::format_duration;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -150,6 +150,24 @@ pub struct AnalyzerState {
     pub players: Vec<Player>,
     pub rounds: Vec<Round>,
     pub team_scores: TeamScores,
+}
+
+pub struct DemoInfo {
+    pub demo_protocol: i32,
+    pub network_protocol: i32,
+    pub map_name: String,
+}
+
+pub struct FileInfo {
+    pub created_at: SystemTime,
+    pub name: String,
+    pub path: String,
+}
+
+pub struct Analysis {
+    pub demo_info: DemoInfo,
+    pub file_info: FileInfo,
+    pub state: AnalyzerState,
 }
 
 #[derive(Debug, Default)]

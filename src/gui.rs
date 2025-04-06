@@ -1,7 +1,6 @@
-use crate::analysis::{Player, PlayerGlobalId, Round};
-use crate::dod::Team;
-use crate::reporting::Report;
+use crate::analysis::{Analysis, Player, PlayerGlobalId, Round};
 use crate::run_analyzer;
+use dod::Team;
 use egui::{
     panel::Side, Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label,
     Layout, ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window,
@@ -18,11 +17,11 @@ use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
 pub struct Gui {
+    analyses: Vec<Analysis>,
     batch_progress: Option<(usize, usize)>,
     file_picker: FileDialog,
-    open_reports: HashSet<String>,
+    open_windows: HashSet<String>,
     player_highlight: PlayerHighlighting,
-    reports: Vec<Report>,
 
     rx: mpsc::Receiver<GuiMessage>,
     tx: mpsc::Sender<GuiMessage>,
@@ -42,7 +41,7 @@ enum GuiMessage {
 
     AnalyzerProgress {
         progress: (usize, usize),
-        report: Box<Report>,
+        report: Box<Analysis>,
     },
 }
 
@@ -61,8 +60,8 @@ impl Default for Gui {
                 .default_file_filter("Demo files (*.dem)"),
 
             player_highlight: Default::default(),
-            open_reports: Default::default(),
-            reports: Default::default(),
+            open_windows: Default::default(),
+            analyses: Default::default(),
             rx,
             tx,
         }
@@ -81,9 +80,9 @@ impl eframe::App for Gui {
             Ok(GuiMessage::AnalyzerProgress { progress, report }) => {
                 self.batch_progress = Some(progress);
 
-                self.open_reports.insert(report.file_info.path.clone());
+                self.open_windows.insert(report.file_info.path.clone());
 
-                self.reports.push(*report);
+                self.analyses.push(*report);
             }
             _ => {}
         }
@@ -104,7 +103,7 @@ impl eframe::App for Gui {
                 Vec::from_iter(from_picker.into_iter().chain(from_drop).filter(|path| {
                     if let Some(path) = path.to_str().and_then(|str| String::from_str(str).ok()) {
                         !self
-                            .reports
+                            .analyses
                             .iter()
                             .any(|report| report.file_info.path == path)
                     } else {
@@ -136,12 +135,12 @@ impl eframe::App for Gui {
                                 }
                             });
 
-                            if !self.reports.is_empty() {
+                            if !self.analyses.is_empty() {
                                 ui.separator();
 
                                 if ui.button("Clear memory").clicked() {
-                                    self.open_reports.clear();
-                                    self.reports.clear();
+                                    self.open_windows.clear();
+                                    self.analyses.clear();
                                 }
 
                                 if ui.button("Organize windows").clicked() {
@@ -175,24 +174,24 @@ impl eframe::App for Gui {
                 });
         }
 
-        if !self.reports.is_empty() {
+        if !self.analyses.is_empty() {
             SidePanel::new(Side::Left, "open_reports")
                 .frame(Frame::side_top_panel(&ctx.style()).inner_margin(6.))
                 .show(ctx, |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                            let mut reports = self.reports.iter().peekable();
+                            let mut reports = self.analyses.iter().peekable();
 
                             while let Some(r) = reports.next() {
                                 let title = r.file_info.path.clone();
-                                let mut is_open = self.open_reports.contains(&title);
+                                let mut is_open = self.open_windows.contains(&title);
 
                                 ui.toggle_value(&mut is_open, &title);
 
                                 if !is_open {
-                                    self.open_reports.remove(&title);
+                                    self.open_windows.remove(&title);
                                 } else {
-                                    self.open_reports.insert(title);
+                                    self.open_windows.insert(title);
                                 }
 
                                 if reports.peek().is_some() {
@@ -206,18 +205,18 @@ impl eframe::App for Gui {
 
         CentralPanel::default().show(ctx, |ui| {
             ui.centered_and_justified(|ui| {
-                if self.reports.is_empty() {
+                if self.analyses.is_empty() {
                     ui.heading("To start, drag and drop demos here or open with the File > Open menu.");
-                } else if self.open_reports.is_empty() {
+                } else if self.open_windows.is_empty() {
                     ui.heading(
                         "You still have demos open. Select one from the list on the left to re-open an existing demo, or you can add a new demo.",
                     );
                 }
             });
 
-            for r in &self.reports {
+            for r in &self.analyses {
                 let demo_path = &r.file_info.path;
-                let mut is_open = self.open_reports.contains(demo_path);
+                let mut is_open = self.open_windows.contains(demo_path);
 
                 Window::new(&r.file_info.name)
                     .id(demo_path.clone().into())
@@ -228,9 +227,9 @@ impl eframe::App for Gui {
                     });
 
                 if !is_open {
-                    self.open_reports.remove(demo_path);
+                    self.open_windows.remove(demo_path);
                 } else {
-                    self.open_reports.insert(demo_path.clone());
+                    self.open_windows.insert(demo_path.clone());
                 }
             }
         });
@@ -245,7 +244,7 @@ const AXIS_COLOR: Color32 = Color32::DARK_RED;
 
 const NEUTRAL_COLOR: Color32 = Color32::WHITE;
 
-fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
+fn report_ui(r: &Analysis, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
     header_ui(r, ui);
 
     ui.separator();
@@ -265,7 +264,7 @@ fn report_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut 
     player_summaries_ui(r, player_highlighting, ui);
 }
 
-fn header_ui(r: &Report, ui: &mut Ui) {
+fn header_ui(r: &Analysis, ui: &mut Ui) {
     CollapsingHeader::new("Summary")
         .default_open(true)
         .show(ui, |ui| {
@@ -297,10 +296,10 @@ fn header_ui(r: &Report, ui: &mut Ui) {
         });
 }
 
-fn scoreboard_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
+fn scoreboard_ui(r: &Analysis, player_highlighting: &mut PlayerHighlighting, ui: &mut Ui) {
     let (allies_score, axis_score) = (
-        r.analysis.team_scores.get_team_score(Team::Allies),
-        r.analysis.team_scores.get_team_score(Team::Axis),
+        r.state.team_scores.get_team_score(Team::Allies),
+        r.state.team_scores.get_team_score(Team::Axis),
     );
 
     let match_result_fragment = format!(
@@ -335,7 +334,7 @@ fn scoreboard_ui(r: &Report, player_highlighting: &mut PlayerHighlighting, ui: &
                 })
                 .body(|ref mut body| {
                     // Players sorted by team > score > kills
-                    let mut players = Vec::from_iter(&r.analysis.players);
+                    let mut players = Vec::from_iter(&r.state.players);
 
                     players.sort_by(|left, right| match (&left.team, &right.team) {
                         (Some(left_team), Some(right_team)) if left_team == right_team => {
@@ -425,7 +424,7 @@ fn scoreboard_row_ui(
     });
 }
 
-fn team_score_timeline_ui(r: &Report, ui: &mut Ui) {
+fn team_score_timeline_ui(r: &Analysis, ui: &mut Ui) {
     CollapsingHeader::new("Timeline")
         .default_open(true)
         .show(ui, |ui| {
@@ -449,7 +448,7 @@ fn team_score_timeline_ui(r: &Report, ui: &mut Ui) {
 
             plot.show(ui, |plot_ui| {
                 let team_line_points = |team: Team| {
-                    r.analysis
+                    r.state
                         .team_scores
                         .iter()
                         .filter_map(move |(time, t, score)| {
@@ -478,7 +477,7 @@ fn team_score_timeline_ui(r: &Report, ui: &mut Ui) {
         });
 }
 
-fn rounds_ui(r: &Report, ui: &mut Ui) {
+fn rounds_ui(r: &Analysis, ui: &mut Ui) {
     CollapsingHeader::new("Rounds").show(ui, |ui| {
         let table = TableBuilder::new(ui)
             .striped(true)
@@ -509,7 +508,7 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
             .body(|mut ui| {
                 let mut match_duration = Duration::default();
 
-                for (i, round) in r.analysis.rounds.iter().enumerate() {
+                for (i, round) in r.state.rounds.iter().enumerate() {
                     if let Round::Completed {
                         start_time,
                         end_time,
@@ -582,8 +581,8 @@ fn rounds_ui(r: &Report, ui: &mut Ui) {
     });
 }
 
-fn player_summaries_ui(r: &Report, player_highlighting: &PlayerHighlighting, ui: &mut Ui) {
-    let mut players = Vec::from_iter(&r.analysis.players);
+fn player_summaries_ui(r: &Analysis, player_highlighting: &PlayerHighlighting, ui: &mut Ui) {
+    let mut players = Vec::from_iter(&r.state.players);
 
     players.sort_by(|l, r| l.name.cmp(&r.name));
 

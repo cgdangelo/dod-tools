@@ -833,10 +833,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dod"
+version = "0.5.1"
+dependencies = [
+ "dem",
+ "nom 8.0.0",
+]
+
+[[package]]
 name = "dod-tools"
 version = "0.5.1"
 dependencies = [
  "dem",
+ "dod",
  "eframe",
  "egui",
  "egui-file-dialog",
@@ -844,7 +853,6 @@ dependencies = [
  "egui_plot",
  "filetime",
  "humantime",
- "nom 8.0.0",
  "tabled",
  "tokio",
  "uuid",

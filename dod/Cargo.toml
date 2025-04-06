@@ -1,0 +1,8 @@
+[package]
+name = "dod"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dem = "0.2.3"
+nom = "8.0.0"

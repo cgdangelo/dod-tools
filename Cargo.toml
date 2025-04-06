@@ -1,10 +1,16 @@
 [package]
 name = "dod-tools"
-version = "0.5.1"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+[workspace]
+resolver = "3"
+package = { edition = "2024", version = "0.5.1" }
+members = ["dod"]
 
 [dependencies]
 dem = "0.2.3"
+dod = { path = "./dod" }
 eframe = "0.31.1"
 egui = "0.31.1"
 egui_extras = "0.31.1"
@@ -12,7 +18,6 @@ egui-file-dialog = "0.9.0"
 egui_plot = "0.31.0"
 filetime = "0.2.25"
 humantime = "2.2.0"
-nom = "8.0.0"
 tabled = "0.18.0"
 tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
 uuid = { version = "1.16.0", features = ["v4"] }

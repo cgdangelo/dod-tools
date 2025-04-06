@@ -1,12 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::analysis::{
-    frame_to_events, use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates,
-    use_rounds_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates,
-    use_weapon_breakdown_updates, AnalyzerEvent, AnalyzerState,
-};
 use crate::gui::Gui;
-use analysis::{Analysis, DemoInfo, FileInfo};
+use analysis::{
+    frame_to_events, use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates, use_rounds_updates, use_scoreboard_updates,
+    use_team_score_updates, use_timing_updates, use_weapon_breakdown_updates,
+    Analysis, AnalyzerEvent, AnalyzerState, DemoInfo,
+    FileInfo,
+};
 use dem::open_demo;
 use filetime::FileTime;
 use std::env::args;
@@ -14,8 +14,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-mod analysis;
-mod dod;
 mod gui;
 mod reporting;
 
@@ -36,9 +34,9 @@ fn run_cli(args: Vec<String>) {
         }
 
         let demo_path = PathBuf::from(arg);
-        let report = run_analyzer(&demo_path);
+        let analysis = run_analyzer(&demo_path);
 
-        println!("{}", report);
+        println!("{}", reporting::Markdown(analysis));
     }
 }
 

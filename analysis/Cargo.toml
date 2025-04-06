@@ -1,0 +1,10 @@
+[package]
+name = "analysis"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dod = { path = "../dod" }
+
+dem = "0.2.3"
+uuid = { version = "1.16.0", features = ["v4"] }

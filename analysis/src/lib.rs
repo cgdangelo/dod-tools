@@ -1,6 +1,5 @@
-use crate::dod::{Class, Message, RoundState, Weapon};
 use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
-use humantime::format_duration;
+use dod::{Class, Message, RoundState, Weapon};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
@@ -544,28 +543,6 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
                 state.current_time.offset,
                 state.rounds.len()
             );
-
-            for (i, round) in state.rounds.iter().enumerate() {
-                match round {
-                    Round::Completed {
-                        start_time,
-                        end_time,
-                        winner_stats,
-                    } => {
-                        println!(
-                            "\tRound #{}: start={:<20?} end={:<20?} dur={} winner={:?}",
-                            i + 1,
-                            start_time.offset,
-                            end_time.offset,
-                            format_duration(end_time.offset - start_time.offset),
-                            winner_stats
-                        );
-                    }
-                    Round::Active { .. } => {
-                        println!("\tRound #{} {:?} round", i + 1, round)
-                    }
-                }
-            }
         }
 
         AnalyzerEvent::UserMessage(Message::RoundState(round_state)) => {

@@ -139,6 +139,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "analysis"
+version = "0.5.1"
+dependencies = [
+ "dem",
+ "dod",
+ "uuid",
+]
+
+[[package]]
 name = "android-activity"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -846,6 +855,7 @@ dependencies = [
 name = "dod-tools"
 version = "0.5.1"
 dependencies = [
+ "analysis",
  "dem",
  "dod",
  "eframe",

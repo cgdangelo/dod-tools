@@ -6,11 +6,13 @@ edition.workspace = true
 [workspace]
 resolver = "3"
 package = { edition = "2024", version = "0.5.1" }
-members = ["dod"]
+members = ["analysis", "dod"]
 
 [dependencies]
-dem = "0.2.3"
+analysis = { path = "./analysis" }
 dod = { path = "./dod" }
+
+dem = "0.2.3"
 eframe = "0.31.1"
 egui = "0.31.1"
 egui_extras = "0.31.1"

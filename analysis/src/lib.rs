@@ -1,4 +1,7 @@
-use dem::types::{EngineMessage, Frame, FrameData, MessageData, NetMessage};
+use dem::{
+    open_demo_from_bytes,
+    types::{EngineMessage, Frame, FrameData, MessageData, NetMessage},
+};
 use dod::{Class, Message, RoundState, Weapon};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
@@ -201,6 +204,49 @@ pub enum ClanMatchDetection {
         reset_time: GameTime,
     },
     MatchIsLive,
+}
+
+impl Analysis {
+    pub fn from_bytes(i: &[u8]) -> Self {
+        let demo = open_demo_from_bytes(i).expect("Could not parse the file");
+
+        let events = vec![AnalyzerEvent::Initialization].into_iter().chain(
+            demo.directory
+                .entries
+                .iter()
+                .flat_map(|entry| entry.frames.iter().flat_map(frame_to_events))
+                .chain(vec![AnalyzerEvent::Finalization]),
+        );
+
+        let state = events.fold(AnalyzerState::default(), |mut state, ref event| {
+            use_timing_updates(&mut state, event);
+            use_player_updates(&mut state, event);
+            use_scoreboard_updates(&mut state, event);
+            use_kill_streak_updates(&mut state, event);
+            use_weapon_breakdown_updates(&mut state, event);
+            use_team_score_updates(&mut state, event);
+            use_rounds_updates(&mut state, event);
+            use_clan_match_detection_updates(Duration::from_secs(10), &mut state, event);
+
+            state
+        });
+
+        let map_name = demo
+            .header
+            .map_name
+            .to_str()
+            .map(|s| s.trim_end_matches('\x00'))
+            .unwrap()
+            .to_string();
+
+        let demo_info = DemoInfo {
+            demo_protocol: demo.header.demo_protocol,
+            map_name,
+            network_protocol: demo.header.network_protocol,
+        };
+
+        Analysis { state, demo_info }
+    }
 }
 
 impl AnalyzerState {

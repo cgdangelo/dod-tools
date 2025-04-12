@@ -2,16 +2,11 @@
 
 use crate::cli::Cli;
 use crate::gui::Gui;
-use analysis::{
-    Analysis, AnalyzerEvent, AnalyzerState, DemoInfo, frame_to_events,
-    use_clan_match_detection_updates, use_kill_streak_updates, use_player_updates,
-    use_rounds_updates, use_scoreboard_updates, use_team_score_updates, use_timing_updates,
-    use_weapon_breakdown_updates,
-};
-use dem::open_demo;
+use analysis::Analysis;
 use filetime::FileTime;
 use std::env::args;
 use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
@@ -35,32 +30,21 @@ pub struct FileInfo {
 }
 
 fn run_analyzer(demo_path: &PathBuf) -> (FileInfo, Analysis) {
-    let demo = open_demo(demo_path).expect("Could not parse the demo");
+    let mut file = fs::OpenOptions::new()
+        .read(true)
+        .open(demo_path)
+        .expect("Could not open the file");
 
-    let events = vec![AnalyzerEvent::Initialization].into_iter().chain(
-        demo.directory
-            .entries
-            .iter()
-            .flat_map(|entry| entry.frames.iter().flat_map(frame_to_events))
-            .chain(vec![AnalyzerEvent::Finalization]),
-    );
+    let mut bytes: Vec<u8> = vec![];
 
-    let analysis = events.fold(AnalyzerState::default(), |mut state, ref event| {
-        use_timing_updates(&mut state, event);
-        use_player_updates(&mut state, event);
-        use_scoreboard_updates(&mut state, event);
-        use_kill_streak_updates(&mut state, event);
-        use_weapon_breakdown_updates(&mut state, event);
-        use_team_score_updates(&mut state, event);
-        use_rounds_updates(&mut state, event);
-        use_clan_match_detection_updates(Duration::from_secs(10), &mut state, event);
+    file.read_to_end(&mut bytes)
+        .expect("Could not read the file");
 
-        state
-    });
+    let analysis = Analysis::from_bytes(bytes.as_slice());
 
     let created_at = fs::metadata(demo_path)
         .map_err(|_| ())
-        .and_then(|metadata| FileTime::from_creation_time(&metadata).ok_or(()))
+        .map(|metadata| FileTime::from_last_modification_time(&metadata))
         .map(|file_time| {
             let creation_offset =
                 Duration::new(file_time.unix_seconds() as u64, file_time.nanoseconds());
@@ -78,25 +62,6 @@ fn run_analyzer(demo_path: &PathBuf) -> (FileInfo, Analysis) {
             .unwrap(),
 
         path: demo_path.to_str().map(String::from).unwrap(),
-    };
-
-    let map_name = demo
-        .header
-        .map_name
-        .to_str()
-        .map(|s| s.trim_end_matches('\x00'))
-        .unwrap()
-        .to_string();
-
-    let demo_info = DemoInfo {
-        demo_protocol: demo.header.demo_protocol,
-        map_name,
-        network_protocol: demo.header.network_protocol,
-    };
-
-    let analysis = Analysis {
-        state: analysis,
-        demo_info,
     };
 
     (file_info, analysis)

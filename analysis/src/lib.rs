@@ -287,7 +287,7 @@ pub fn frame_to_events(frame: &Frame) -> Vec<AnalyzerEvent> {
             for net_msg in msgs {
                 match net_msg {
                     NetMessage::UserMessage(user_msg) => {
-                        if let Ok(dod_msg) = Message::try_from(user_msg) {
+                        if let Ok(dod_msg) = Message::new(&user_msg.name, &user_msg.data) {
                             events.push(AnalyzerEvent::UserMessage(dod_msg));
                         }
                     }

@@ -847,7 +847,6 @@ dependencies = [
 name = "dod"
 version = "0.5.1"
 dependencies = [
- "dem",
  "nom 8.0.0",
 ]
 
@@ -1960,7 +1959,6 @@ name = "native"
 version = "0.5.1"
 dependencies = [
  "analysis",
- "dem",
  "eframe",
  "egui",
  "egui-file-dialog",

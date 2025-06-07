@@ -6,7 +6,6 @@ edition.workspace = true
 [dependencies]
 analysis = { path = "../analysis" }
 
-dem = "0.2.3"
 eframe = "0.31.1"
 egui = "0.31.1"
 egui_extras = "0.31.1"

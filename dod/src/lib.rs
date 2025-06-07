@@ -1,16 +1,33 @@
+//! Parsers, mappers, and other utilities for reading data structures in Day of Defeat demo files.
+
 #![allow(dead_code)]
 
-use dem::types::UserMessage;
 use nom::{
     IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take, take_until},
     combinator::{all_consuming, eof, fail, opt, success},
+    error::context,
     multi::{length_count, many0},
     number::complete::{le_i8, le_i16, le_i32, le_u8, le_u16},
     sequence::terminated,
 };
+use std::str::from_utf8;
 use std::time::Duration;
+
+pub enum Error {
+    ParserError,
+}
+
+/// Version of Day of Defeat that was used to record the demo.
+pub enum Version {
+    V1_0,
+    V1_1,
+    V1_1B,
+    V1_1C,
+    V1_2,
+    V1_3,
+}
 
 #[derive(Debug)]
 pub enum Message {
@@ -390,7 +407,7 @@ pub struct PClass {
 
 /// - Length: varies
 ///
-/// ```
+/// ```txt
 ///   (*((void (__cdecl **)(_DWORD))&gTankSpread.has_disconnected + 48))(this->m_iGroupId);
 ///   (*((void (__cdecl **)(int))&gTankSpread.has_disconnected + 48))(this->m_iState);
 ///   if ( this->m_iState == 1 )
@@ -783,14 +800,11 @@ fn weapon(i: &[u8]) -> IResult<&[u8], Weapon> {
         .parse(i)
 }
 
-impl TryFrom<&UserMessage> for Message {
-    type Error = ();
-
-    fn try_from(value: &UserMessage) -> Result<Self, Self::Error> {
-        let message_name = String::from_utf8(value.name.to_vec()).map_err(|_| ())?;
-        let message_name = message_name.trim_end_matches('\x00');
-
-        let i = &value.data;
+impl Message {
+    pub fn new<'a>(msg_name: &'a [u8], msg_data: &'a [u8]) -> Result<Message, Error> {
+        let msg_name = from_utf8(msg_name).map_err(|_| Error::ParserError)?;
+        let message_name = msg_name.trim_end_matches('\x00');
+        let i = msg_data;
 
         let (_, message) = match message_name {
             "AmmoX" => ammox.map(Self::AmmoX).parse(i),
@@ -835,11 +849,9 @@ impl TryFrom<&UserMessage> for Message {
             "WaveTime" => wave_time.map(Self::WaveTime).parse(i),
             "WeaponList" => weapon_list.map(Self::WeaponList).parse(i),
             "YouDied" => you_died.map(Self::YouDied).parse(i),
-            _ => fail::<&[u8], Message, _>().parse(i),
+            _ => context("Unknown message", fail::<&[u8], Message, _>()).parse(i),
         }
-        .map_err(|e| {
-            eprintln!("{} i={:?} | e={:?}", message_name, i, e);
-        })?;
+        .map_err(|_| Error::ParserError)?;
 
         Ok(message)
     }

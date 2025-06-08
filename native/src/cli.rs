@@ -26,6 +26,16 @@ impl Cli {
 
 pub struct Markdown(pub FileInfo, pub Analysis);
 
+impl Markdown {
+    fn md_escape(str: &str) -> String {
+        str.replace("|", r"\|")
+            .replace("_", r"\_")
+            .replace("*", r"\*")
+            .replace("[", r"\[")
+            .replace("]", r"\]")
+    }
+}
+
 impl Display for Markdown {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Players sorted by team then kills
@@ -73,7 +83,7 @@ impl Display for Markdown {
             for player in &ordered_players {
                 table_builder.push_record([
                     player.id.0.to_string(),
-                    md_escape(&player.name),
+                    Self::md_escape(&player.name),
                     match &player.team {
                         None => "Unknown",
                         Some(Team::Allies) => "Allies",
@@ -170,7 +180,7 @@ impl Display for Markdown {
             writeln!(f, "## Player Summaries\n")?;
 
             for player in &ordered_players {
-                writeln!(f, "### {}\n", md_escape(&player.name))?;
+                writeln!(f, "### {}\n", Self::md_escape(&player.name))?;
 
                 // Kills per weapon section
                 writeln!(f, "#### Weapon Breakdown\n")?;
@@ -237,12 +247,4 @@ impl Display for Markdown {
 
         Ok(())
     }
-}
-
-fn md_escape(str: &str) -> String {
-    str.replace("|", r"\|")
-        .replace("_", r"\_")
-        .replace("*", r"\*")
-        .replace("[", r"\[")
-        .replace("]", r"\]")
 }

@@ -428,9 +428,9 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
 
             if !is_teamkill {
                 if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
-                killer_current_streak
-                    .kills
-                    .push((current_time, death_msg.weapon.clone()));
+                    killer_current_streak
+                        .kills
+                        .push((current_time, death_msg.weapon.clone()));
                 }
             }
         }

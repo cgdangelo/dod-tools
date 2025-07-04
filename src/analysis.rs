@@ -419,10 +419,6 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
             _ => false,
         };
 
-        if is_teamkill {
-            return;
-        }
-
         let killer = state.find_player_by_client_index_mut(death_msg.killer_client_index - 1);
 
         if let Some(killer) = killer {
@@ -430,10 +426,12 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
                 killer.kill_streaks.push(KillStreak::default());
             }
 
-            if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
+            if !is_teamkill {
+                if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
                 killer_current_streak
                     .kills
                     .push((current_time, death_msg.weapon.clone()));
+                }
             }
         }
 

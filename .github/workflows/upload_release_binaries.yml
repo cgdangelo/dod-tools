@@ -1,29 +1,47 @@
 on:
-  push:
-    tags: [ "v*" ]
+  release:
+    types: [ published ]
 
 permissions:
   contents: write
 
 env:
-  PROJECT_NAME: ${{ github.event.repository.name }}
+  BINARY_NAME: ${{ github.event.repository.name }}
+  CARGO_TERM_COLOR: always
+  RELEASE_VERSION: ${{ github.event.release.tag_name }}
 
 jobs:
   build_and_upload:
-    name: Create and upload binary ${{ matrix.target }}
-    runs-on: ${{ matrix.runner }}
+    name: Create and upload binary ${{ matrix.platform.target }}
+    runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
-        include:
-          - target: x86_64-pc-windows-msvc
+        platform:
+          - name: Windows-x86_64
             runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+          - name: Linux-x86_64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tgz
+          - name: macOS-ARM
+            runner: ubuntu-latest
+            target: aarch64-apple-darwin
+            archive: zip
+          - name: macOS-x86_64
+            runner: ubuntu-latest
+            target: x86_64-apple-darwin
+            archive: zip
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Update toolchain
-        run: rustup update
+        run: |
+          rustup target add ${{ matrix.platform.target }}
+          rustup update
 
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
@@ -31,41 +49,33 @@ jobs:
       - name: Test and build code
         run: |
           cargo clippy
+          cargo test
           cargo build --release
 
       - name: Compress artifact (zip)
-        if: ${{ matrix.runner == 'windows-latest' }}
+        if: ${{ matrix.platform.runner == 'windows-latest' }}
+        env:
+          ARCHIVE_NAME: ${{ env.BINARY_NAME }}-${{ env.RELEASE_VERSION }}-${{ matrix.platform.target }}.${{ matrix.platform.archive }}
         run: |
-          Compress-Archive -Path target/release/${{ env.PROJECT_NAME }}.exe -DestinationPath ${{ env.PROJECT_NAME }}.${{ matrix.target }}.zip
+          Compress-Archive -Path target/release/${{ env.BINARY_NAME }}.exe -DestinationPath ${{ env.ARCHIVE_NAME }}
 
-      - name: Compress artifact (tar)
-        if: ${{ matrix.runner == 'ubuntu-latest' }}
+      - name: Compress artifact (tgz)
+        if: ${{ matrix.platform.archive == 'tgz' }}
+        env:
+          ARCHIVE_NAME: ${{ env.BINARY_NAME }}-${{ env.RELEASE_VERSION }}-${{ matrix.platform.target }}.${{ matrix.platform.archive }}
         run: |
-          exit 1
+          tar -czf ${{ env.ARCHIVE_NAME }} target/release/${{ env.BINARY_NAME }}
+
+      - name: Compress artifact (zip)
+        if: ${{ matrix.platform.runner != 'windows-latest' && matrix.platform.archive == 'zip' }}
+        env:
+          ARCHIVE_NAME: ${{ env.BINARY_NAME }}-${{ env.RELEASE_VERSION }}-${{ matrix.platform.target }}.${{ matrix.platform.archive }}
+        run: |
+          zip ${{ env.ARCHIVE_NAME }} target/release/${{ env.BINARY_NAME }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: ${{ env.PROJECT_NAME }}.${{ matrix.target }}.zip
-
-  release:
-    name: Create release
-    needs: [ build_and_upload ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: Create release
         env:
+          ARCHIVE_NAME: ${{ env.BINARY_NAME }}-${{ env.RELEASE_VERSION }}-${{ matrix.platform.target }}.${{ matrix.platform.archive }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$TAG" \
-            --repo="$GITHUB_REPOSITORY" \
-            --title="${TAG#v}" \
-            --generate-notes \
-            ./dist/*
+          gh release upload ${{ env.RELEASE_VERSION }} ${{ env.ARCHIVE_NAME }}

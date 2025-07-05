@@ -1,26 +1,21 @@
-use crate::{FileInfo, run_analyzer};
 use analysis::{Analysis, Round, Team};
 use humantime::{format_duration, format_rfc3339_seconds};
+use native::{FileInfo, run_analyzer};
 use std::cmp::Ordering;
+use std::env::args;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 use tabled::{builder::Builder, settings::Style};
 
-pub struct Cli;
+fn main() {
+    let args = args().collect::<Vec<_>>();
 
-impl Cli {
-    pub fn run(args: Vec<String>) {
-        for arg in &args[1..] {
-            if arg == "--cli" {
-                continue;
-            }
+    for arg in &args[1..] {
+        let demo_path = PathBuf::from(arg);
+        let (file_info, analysis) = run_analyzer(&demo_path);
 
-            let demo_path = PathBuf::from(arg);
-            let (file_info, analysis) = run_analyzer(&demo_path);
-
-            println!("{}", Markdown(file_info, analysis));
-        }
+        println!("{}", Markdown(file_info, analysis));
     }
 }
 

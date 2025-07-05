@@ -1,27 +1,9 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-
-use crate::cli::Cli;
-use crate::gui::Gui;
 use analysis::Analysis;
 use filetime::FileTime;
-use std::env::args;
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
-
-mod cli;
-mod gui;
-
-fn main() {
-    let args = args().collect::<Vec<_>>();
-
-    if args.contains(&"--cli".to_string()) {
-        Cli::run(args)
-    } else {
-        Gui::run()
-    }
-}
 
 pub struct FileInfo {
     pub created_at: SystemTime,
@@ -29,7 +11,7 @@ pub struct FileInfo {
     pub path: String,
 }
 
-fn run_analyzer(demo_path: &PathBuf) -> (FileInfo, Analysis) {
+pub fn run_analyzer(demo_path: &PathBuf) -> (FileInfo, Analysis) {
     let mut file = fs::OpenOptions::new()
         .read(true)
         .open(demo_path)

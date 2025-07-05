@@ -1,4 +1,5 @@
-use crate::{FileInfo, run_analyzer};
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+
 use analysis::{Analysis, Player, PlayerGlobalId, Round, SteamId, Team};
 use egui::{
     Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label, Layout,
@@ -8,12 +9,28 @@ use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
 use egui_plot::{Corner, Legend, Line, Plot, PlotPoints};
 use humantime::{format_duration, format_rfc3339_seconds};
+use native::{FileInfo, run_analyzer};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, mpsc};
 use std::time::Duration;
+
+#[tokio::main]
+async fn main() {
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_maximized(true),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "dod-tools",
+        options,
+        Box::new(|_cc| Ok(Box::<Gui>::default())),
+    )
+    .expect("Could not run the GUI");
+}
 
 pub struct Gui {
     analyses: Vec<(FileInfo, Analysis)>,
@@ -43,23 +60,6 @@ enum GuiMessage {
         file_info: FileInfo,
         progress: (usize, usize),
     },
-}
-
-impl Gui {
-    #[tokio::main]
-    pub async fn run() {
-        let options = eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default().with_maximized(true),
-            ..Default::default()
-        };
-
-        eframe::run_native(
-            "dod-tools",
-            options,
-            Box::new(|_cc| Ok(Box::<Gui>::default())),
-        )
-        .expect("Could not run the GUI");
-    }
 }
 
 impl Default for Gui {

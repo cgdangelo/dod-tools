@@ -57,21 +57,22 @@ jobs:
         env:
           ARCHIVE_NAME: ${{ env.BINARY_NAME }}-${{ env.RELEASE_VERSION }}-${{ matrix.platform.target }}.${{ matrix.platform.archive }}
         run: |
-          Compress-Archive -Path target/release/${{ env.BINARY_NAME }}.exe -DestinationPath ${{ env.ARCHIVE_NAME }}
+          Get-ChildItem -Path target/release/${{ env.BINARY_NAME }}-gui.exe, target/release/${{ env.BINARY_NAME }}-cli.exe |
+          Compress-Archive -DestinationPath ${{ env.ARCHIVE_NAME }}
 
       - name: Compress artifact (tgz)
         if: ${{ matrix.platform.archive == 'tgz' }}
         env:
           ARCHIVE_NAME: ${{ env.BINARY_NAME }}-${{ env.RELEASE_VERSION }}-${{ matrix.platform.target }}.${{ matrix.platform.archive }}
         run: |
-          tar -czf ${{ env.ARCHIVE_NAME }} target/release/${{ env.BINARY_NAME }}
+          tar -czf ${{ env.ARCHIVE_NAME }} -C target/release ${{ env.BINARY_NAME }}-gui ${{ env.BINARY_NAME }}-cli
 
       - name: Compress artifact (zip)
         if: ${{ matrix.platform.runner != 'windows-latest' && matrix.platform.archive == 'zip' }}
         env:
           ARCHIVE_NAME: ${{ env.BINARY_NAME }}-${{ env.RELEASE_VERSION }}-${{ matrix.platform.target }}.${{ matrix.platform.archive }}
         run: |
-          zip ${{ env.ARCHIVE_NAME }} target/release/${{ env.BINARY_NAME }}
+          zip -j ${{ env.ARCHIVE_NAME }} target/release/${{ env.BINARY_NAME }}-gui target/release/${{ env.BINARY_NAME }}-cli
 
       - name: Upload artifact
         env:

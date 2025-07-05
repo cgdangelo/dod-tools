@@ -1,5 +1,5 @@
 use crate::{FileInfo, run_analyzer};
-use analysis::{Analysis, Player, PlayerGlobalId, Round, Team};
+use analysis::{Analysis, Player, PlayerGlobalId, Round, SteamId, Team};
 use egui::{
     Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label, Layout,
     ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window, panel::Side,
@@ -411,11 +411,16 @@ fn scoreboard_row_ui(
             }
         });
 
-        row.col(|ui| {
-            let link_text = p.id.as_steam_id().unwrap_or(p.id.to_string());
-            let link_url = format!("https://steamcommunity.com/profiles/{}", p.id);
+        row.col(|ui| match SteamId::try_from(&p.id) {
+            Ok(steam_id) => {
+                let link_text = steam_id.to_string();
+                let link_url = format!("https://steamcommunity.com/profiles/{}", p.id);
 
-            ui.hyperlink_to(link_text, link_url);
+                ui.hyperlink_to(link_text, link_url);
+            }
+            _ => {
+                ui.label(p.id.to_string());
+            }
         });
 
         row.col(|ui| {

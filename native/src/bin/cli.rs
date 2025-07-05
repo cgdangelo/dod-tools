@@ -1,3 +1,5 @@
+//! Demo analyzer that runs in a terminal and produces text output.
+
 use analysis::{Analysis, Round, Team};
 use humantime::{format_duration, format_rfc3339_seconds};
 use native::{FileInfo, run_analyzer};
@@ -19,7 +21,7 @@ fn main() {
     }
 }
 
-pub struct Markdown(pub FileInfo, pub Analysis);
+struct Markdown(FileInfo, Analysis);
 
 impl Markdown {
     fn md_escape(str: &str) -> String {

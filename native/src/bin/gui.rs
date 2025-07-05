@@ -1,3 +1,5 @@
+//! Demo analyzer that runs with an interactable user interface.
+
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use analysis::{Analysis, Player, PlayerGlobalId, Round, SteamId, Team};
@@ -32,7 +34,7 @@ async fn main() {
     .expect("Could not run the GUI");
 }
 
-pub struct Gui {
+struct Gui {
     analyses: Vec<(FileInfo, Analysis)>,
     batch_progress: Option<(usize, usize)>,
     file_picker: FileDialog,

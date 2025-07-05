@@ -26,7 +26,7 @@ impl Default for GameTime {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct PlayerGlobalId(pub String);
+pub struct PlayerGlobalId(String);
 
 impl PlayerGlobalId {
     pub fn as_steam_id(&self) -> Option<String> {

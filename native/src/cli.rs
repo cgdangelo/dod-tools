@@ -82,7 +82,7 @@ impl Display for Markdown {
 
             for player in &ordered_players {
                 table_builder.push_record([
-                    player.id.0.to_string(),
+                    player.id.to_string(),
                     Self::md_escape(&player.name),
                     match &player.team {
                         None => "Unknown",

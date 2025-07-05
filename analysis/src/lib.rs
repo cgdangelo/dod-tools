@@ -365,7 +365,16 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
         let id = fields
             .get("*sid")
             .map(|s| s.to_string())
-            .or_else(|| fields.get("*fid").map(|fid| format!("PLAYER_{fid}")))
+            .or_else(|| {
+                // When present, *fid still seems unique to players across demos. Can it be mapped
+                // to a SteamID64?
+                //
+                // ("93",      76561197960269086, "STEAM_0:0:1679"),  // Las1k
+                // ("117",     76561197960269100, "STEAM_0:0:1686"),  // Money-B
+                // ("100",     76561197960269104, "STEAM_0:0:1688"),  // scrd?
+                // ("2761379", 76561197960366973, "STEAM_0:1:50622"), // jdub
+                fields.get("*fid").map(|fid| format!("PLAYER_{fid}"))
+            })
             .or_else(|| Some(format!("CONNECTION_{}", svc_update_user_info.id)))
             .map(PlayerGlobalId)
             .unwrap_or_else(|| {

@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "analysis"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "dem",
  "dod",
@@ -845,7 +845,7 @@ dependencies = [
 
 [[package]]
 name = "dod"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "nom 8.0.0",
 ]
@@ -1956,7 +1956,7 @@ dependencies = [
 
 [[package]]
 name = "native"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "analysis",
  "eframe",

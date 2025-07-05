@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::time::{Duration, Instant};
-use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub struct GameTime {
@@ -366,22 +365,8 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
         let id = fields
             .get("*sid")
             .map(|s| s.to_string())
-            .or_else(|| {
-                let mut uuid_seed = vec![];
-
-                let server_id_bytes = svc_update_user_info.id.to_le_bytes();
-
-                uuid_seed.extend_from_slice(&server_id_bytes);
-                uuid_seed.extend_from_slice(&server_id_bytes);
-                uuid_seed.extend_from_slice(&server_id_bytes);
-                uuid_seed.extend_from_slice(&server_id_bytes);
-
-                let uuid = Uuid::from_slice(&uuid_seed)
-                    .unwrap_or(Uuid::new_v4())
-                    .simple();
-
-                Some(uuid.to_string())
-            })
+            .or_else(|| fields.get("*fid").map(|fid| format!("PLAYER_{fid}")))
+            .or_else(|| Some(format!("CONNECTION_{}", svc_update_user_info.id)))
             .map(PlayerGlobalId)
             .unwrap_or_else(|| {
                 panic!(

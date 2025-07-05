@@ -6,4 +6,3 @@ edition.workspace = true
 [dependencies]
 dod = { path = "../dod" }
 dem = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }

@@ -57,20 +57,20 @@ impl Display for Markdown {
         {
             let file_name = &self.0.name;
             let map_name = &self.1.demo_info.map_name;
-            writeln!(f, "# Summary: {} on {}\n", file_name, map_name)?;
+            writeln!(f, "# Summary: {file_name} on {map_name}\n")?;
 
             let file_path = &self.0.path;
-            writeln!(f, "- File path: `{}`", file_path)?;
+            writeln!(f, "- File path: `{file_path}`")?;
             let file_created_at = format_rfc3339_seconds(self.0.created_at);
-            writeln!(f, "- File created at: {}", file_created_at)?;
+            writeln!(f, "- File created at: {file_created_at}")?;
             let demo_protocol = &self.1.demo_info.demo_protocol;
-            writeln!(f, "- Demo protocol: {}", demo_protocol)?;
+            writeln!(f, "- Demo protocol: {demo_protocol}")?;
             let network_protocol = &self.1.demo_info.network_protocol;
-            writeln!(f, "- Network protocol: {}", network_protocol)?;
+            writeln!(f, "- Network protocol: {network_protocol}")?;
             let app_version = env!("CARGO_PKG_VERSION");
-            writeln!(f, "- Analyzer version: {}", app_version)?;
+            writeln!(f, "- Analyzer version: {app_version}")?;
             let report_created_at = format_rfc3339_seconds(SystemTime::now());
-            writeln!(f, "- Report created at: {}", report_created_at)?;
+            writeln!(f, "- Report created at: {report_created_at}")?;
         }
 
         writeln!(f)?;
@@ -93,7 +93,7 @@ impl Display for Markdown {
                     .to_string(),
                     match &player.class {
                         None => "Unknown".to_string(),
-                        Some(x) => format!("{:?}", x),
+                        Some(x) => format!("{x:?}"),
                     },
                     player.stats.0.to_string(),
                     player.stats.1.to_string(),
@@ -113,12 +113,12 @@ impl Display for Markdown {
                 axis_score
             );
 
-            writeln!(f, "## Scoreboard{}\n", match_result_fragment)?;
+            writeln!(f, "## Scoreboard{match_result_fragment}\n")?;
 
             let mut table = table_builder.build();
             table.with(Style::markdown());
 
-            writeln!(f, "{}", table)?;
+            writeln!(f, "{table}")?;
         }
 
         writeln!(f)?;
@@ -153,7 +153,7 @@ impl Display for Markdown {
                     format_duration(start_time).to_string(),
                     format_duration(duration).to_string(),
                     if let Some((winner, _)) = winner_stats {
-                        format!("{:?}", winner)
+                        format!("{winner:?}")
                     } else {
                         String::new()
                     },
@@ -170,7 +170,7 @@ impl Display for Markdown {
             let mut table = table_builder.build();
             table.with(Style::markdown());
 
-            writeln!(f, "{}", table)?;
+            writeln!(f, "{table}")?;
         }
 
         writeln!(f)?;
@@ -190,7 +190,7 @@ impl Display for Markdown {
 
                 for (weapon, (kills, teamkills)) in player.weapon_breakdown.iter() {
                     table_builder.push_record([
-                        format!("{:?}", weapon),
+                        format!("{weapon:?}"),
                         kills.to_string(),
                         teamkills.to_string(),
                     ]);
@@ -199,7 +199,7 @@ impl Display for Markdown {
                 let mut table = table_builder.build();
                 table.with(Style::markdown());
 
-                writeln!(f, "{}\n", table)?;
+                writeln!(f, "{table}\n")?;
 
                 // Kill streaks section
                 writeln!(f, "#### Kill Streaks\n")?;
@@ -224,7 +224,7 @@ impl Display for Markdown {
                         let weapons_used = kill_streak
                             .kills
                             .iter()
-                            .map(|(_, weapon)| format!("{:?}", weapon))
+                            .map(|(_, weapon)| format!("{weapon:?}"))
                             .collect::<Vec<_>>()
                             .join(", ");
 
@@ -241,7 +241,7 @@ impl Display for Markdown {
                 let mut table = table_builder.build();
                 table.with(Style::markdown());
 
-                writeln!(f, "{}\n", table)?;
+                writeln!(f, "{table}\n")?;
             }
         }
 

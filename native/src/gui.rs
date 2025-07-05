@@ -337,7 +337,7 @@ fn scoreboard_ui(r: &Analysis, player_highlighting: &mut PlayerHighlighting, ui:
         axis_score
     );
 
-    CollapsingHeader::new(format!("Scoreboard: {}", match_result_fragment))
+    CollapsingHeader::new(format!("Scoreboard: {match_result_fragment}"))
         .default_open(true)
         .show(ui, |ui| {
             let table = TableBuilder::new(ui)
@@ -434,7 +434,7 @@ fn scoreboard_row_ui(
         row.col(|ui| {
             ui.label(match &p.class {
                 None => "Unknown".to_string(),
-                Some(x) => format!("{:?}", x),
+                Some(x) => format!("{x:?}"),
             });
         });
 
@@ -679,11 +679,11 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
             for (weapon, (kills, teamkills)) in weapon_breakdown {
                 body.row(TABLE_ROW_HEIGHT, |mut row| {
                     row.col(|ui| {
-                        ui.label(format!("{:?}", weapon));
+                        ui.label(format!("{weapon:?}"));
                     });
 
                     row.col(|ui| {
-                        ui.label(format!("{}", kills));
+                        ui.label(format!("{kills}"));
                     });
 
                     row.col(|ui| {
@@ -693,11 +693,11 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
                             0.
                         };
 
-                        ui.label(format!("{}%", pct_of_total));
+                        ui.label(format!("{pct_of_total}%"));
                     });
 
                     row.col(|ui| {
-                        ui.label(format!("{}", teamkills,));
+                        ui.label(format!("{teamkills}",));
                     });
 
                     row.col(|ui| {
@@ -707,7 +707,7 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
                             0.
                         };
 
-                        ui.label(format!("{}%", pct_of_total));
+                        ui.label(format!("{pct_of_total}%"));
                     });
                 });
             }
@@ -774,7 +774,7 @@ fn kill_streaks_table_ui(p: &Player, ui: &mut Ui) {
                             let weapons = streak
                                 .kills
                                 .iter()
-                                .map(|(_, weapon)| format!("{:?}", weapon))
+                                .map(|(_, weapon)| format!("{weapon:?}"))
                                 .collect::<Vec<_>>()
                                 .join(", ");
 

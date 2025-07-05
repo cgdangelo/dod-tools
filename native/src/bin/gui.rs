@@ -494,16 +494,12 @@ fn team_score_timeline_ui(r: &Analysis, ui: &mut Ui) {
                 };
 
                 let points = team_line_points(Team::Allies);
-                let line = Line::new(PlotPoints::from_iter(points))
-                    .color(ALLIES_COLOR)
-                    .name("Allies");
+                let line = Line::new("Allies", PlotPoints::from_iter(points)).color(ALLIES_COLOR);
 
                 plot_ui.line(line);
 
                 let points = team_line_points(Team::Axis);
-                let line = Line::new(PlotPoints::from_iter(points))
-                    .color(AXIS_COLOR)
-                    .name("Axis");
+                let line = Line::new("Axis", PlotPoints::from_iter(points)).color(AXIS_COLOR);
 
                 plot_ui.line(line);
             });

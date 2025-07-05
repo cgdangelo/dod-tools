@@ -14,7 +14,7 @@ egui_plot = { workspace = true }
 filetime = { workspace = true }
 humantime = { workspace = true }
 tabled = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 
 [[bin]]
 name = "dod-tools-gui"

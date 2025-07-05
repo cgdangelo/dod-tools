@@ -32,7 +32,7 @@ Click the checkbox next to a player in the scoreboard to filter for their result
 Run the `dod-tools-cli` program and provide a file path to a demo as an argument:
 
 ```text
-dod-tools-cli.exe --cli "C:\path\to\demo-file.dem"
+dod-tools-cli.exe "C:\path\to\demo-file.dem"
 ```
 
 Multiple files can be provided at once:
@@ -56,7 +56,7 @@ dod-tools-cli.exe "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-file.
 For quick analysis of a single file, run the program and capture the output to your clipboard. On Windows, for example:
 
 ```text
-dod-tools-cli.exe --cli "C:\path\to\demo-file.dem" | clip
+dod-tools-cli.exe "C:\path\to\demo-file.dem" | clip
 ```
 
 The report contents will be in your clipboard now. Paste this into something that can render Markdown text as HTML (see

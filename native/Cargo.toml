@@ -6,16 +6,15 @@ default-run = "dod-tools-gui"
 
 [dependencies]
 analysis = { path = "../analysis" }
-
-eframe = "0.31.1"
-egui = "0.31.1"
-egui_extras = "0.31.1"
-egui-file-dialog = "0.9.0"
-egui_plot = "0.31.0"
-filetime = "0.2.25"
-humantime = "2.2.0"
-tabled = "0.18.0"
-tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
+eframe = { workspace = true }
+egui = { workspace = true }
+egui_extras = { workspace = true }
+egui-file-dialog = { workspace = true }
+egui_plot = { workspace = true }
+filetime = { workspace = true }
+humantime = { workspace = true }
+tabled = { workspace = true }
+tokio = { workspace = true }
 
 [[bin]]
 name = "dod-tools-gui"

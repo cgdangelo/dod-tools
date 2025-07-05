@@ -8,7 +8,7 @@ A utility for analyzing Day of Defeat (GoldSrc) demo files.
 
 ## Installation
 
-Download the binary for your platform from the [latest release](https://github.com/cgdangelo/dod-tools/releases/latest).
+Download the binaries for your platform from the [latest release](https://github.com/cgdangelo/dod-tools/releases/latest).
 
 ## Usage
 
@@ -23,22 +23,22 @@ Download the binary for your platform from the [latest release](https://github.c
 
 ### GUI mode
 
-Run the program and drag-and-drop 1 or more files onto the main window. Each file will open a report window.
+Run the `dod-tools-gui` program and drag-and-drop 1 or more files onto the main window. Each file will open a report window.
 
 Click the checkbox next to a player in the scoreboard to filter for their results across all open reports.
 
 ### CLI mode
 
-Run the program with the `--cli` flag and provide a file path to a demo as an argument:
+Run the `dod-tools-cli` program and provide a file path to a demo as an argument:
 
 ```text
-dod-tools.exe --cli "C:\path\to\demo-file.dem"
+dod-tools-cli.exe --cli "C:\path\to\demo-file.dem"
 ```
 
 Multiple files can be provided at once:
 
 ```text
-dod-tools.exe --cli "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-file.dem" > reports.md
+dod-tools-cli.exe "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-file.dem" > reports.md
 ```
 
 #### Example 1: Viewing with a Markdown renderer (recommended)
@@ -56,7 +56,7 @@ dod-tools.exe --cli "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-fil
 For quick analysis of a single file, run the program and capture the output to your clipboard. On Windows, for example:
 
 ```text
-dod-tools.exe --cli "C:\path\to\demo-file.dem" | clip
+dod-tools-cli.exe --cli "C:\path\to\demo-file.dem" | clip
 ```
 
 The report contents will be in your clipboard now. Paste this into something that can render Markdown text as HTML (see
@@ -68,7 +68,7 @@ If you have a list of files in a directory you want to analyze at once, run the 
 results into a single file.
 
 ```text
-Get-ChildItem "C:\path\to\demos\*.dem" | ForEach-Object { & dod-tools.exe --cli $_.FullName >> reports.md }
+Get-ChildItem "C:\path\to\demos\*.dem" | ForEach-Object { & dod-tools-cli.exe $_.FullName >> reports.md }
 ```
 
 A `reports.md` file will be created with sections for each of the files.

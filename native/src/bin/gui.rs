@@ -640,7 +640,7 @@ fn player_summaries_ui(r: &Analysis, player_highlighting: &PlayerHighlighting, u
 
 fn weapon_breakdown_ui(p: &Player, ui: &mut Ui) {
     CollapsingHeader::new("Weapon Breakdown")
-        .default_open(false)
+        .default_open(true)
         .show(ui, |ui| {
             weapon_breakdown_table_ui(p, ui);
         });
@@ -719,7 +719,7 @@ fn weapon_breakdown_table_ui(p: &Player, ui: &mut Ui) {
 
 fn kill_streaks_ui(p: &Player, ui: &mut Ui) {
     CollapsingHeader::new("Kill Streaks")
-        .default_open(false)
+        .default_open(true)
         .show(ui, |ui| {
             kill_streaks_table_ui(p, ui);
         });

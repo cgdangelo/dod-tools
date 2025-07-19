@@ -1,27 +1,119 @@
 //! Demo analyzer that runs in a terminal and produces text output.
 
-use analysis::{Analysis, Round, Team};
+use analysis::{Analysis, Round, SteamId, Team};
+use clap::{Parser, ValueEnum};
 use humantime::{format_duration, format_rfc3339_seconds};
 use native::{FileInfo, run_analyzer};
+use serde_json::{Value, json};
 use std::cmp::Ordering;
-use std::env::args;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 use tabled::{builder::Builder, settings::Style};
 
 fn main() {
-    let args = args().collect::<Vec<_>>();
+    let args = Args::parse();
 
-    for arg in &args[1..] {
-        let demo_path = PathBuf::from(arg);
-        let (file_info, analysis) = run_analyzer(&demo_path);
+    let analyses = args.demo_paths.iter().map(run_analyzer);
 
-        println!("{}", Markdown(file_info, analysis));
+    match args.output_format {
+        OutputFormat::Json => println!("{}", Json::from_iter(analyses)),
+
+        OutputFormat::Markdown => analyses.map(Markdown::from).for_each(|output| {
+            println!("{output}");
+        }),
+    };
+}
+
+#[derive(Debug, Parser)]
+#[command(version)]
+struct Args {
+    /// List of paths to demo files
+    demo_paths: Vec<PathBuf>,
+
+    /// The kind of string output to produce from an analysis
+    #[arg(long, value_enum, default_value_t = OutputFormat::Markdown)]
+    output_format: OutputFormat,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+enum OutputFormat {
+    /// Markdown document best used in combination with a Markdown renderer
+    Markdown,
+
+    /// JSON string for automated tools or custom visualization
+    Json,
+}
+
+type AnalyzerOutput = (FileInfo, Analysis);
+
+struct Json(Value);
+
+impl FromIterator<AnalyzerOutput> for Json {
+    fn from_iter<T: IntoIterator<Item = AnalyzerOutput>>(iter: T) -> Self {
+        let analyses = iter.into_iter();
+
+        let json = analyses.fold(vec![], |mut acc, (file, analysis)| {
+            let players = analysis
+                .state
+                .players
+                .iter()
+                .map(|player| {
+                    let id = SteamId::try_from(&player.id)
+                        .map(|steam_id| steam_id.to_string())
+                        .ok()
+                        .unwrap_or(player.id.to_string());
+
+                    json!({
+                        "id": id,
+                        "name": player.name,
+                        "team": player.team.clone().map(|t| format!("{t:?}").to_lowercase()),
+                        "points": player.stats.0,
+                        "kills": player.stats.1,
+                        "deaths": player.stats.2,
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            acc.push(json!({
+                "file": file.path,
+
+                "teams": {
+                    "allies": analysis.state.team_scores.get_team_score(Team::Allies),
+                    "axis": analysis.state.team_scores.get_team_score(Team::Axis),
+                },
+
+                "players": players,
+            }));
+
+            acc
+        });
+
+        json!(json).into()
+    }
+}
+
+impl From<Value> for Json {
+    fn from(value: Value) -> Self {
+        Self(value)
+    }
+}
+
+impl Display for Json {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = serde_json::to_string_pretty(&self.0).map_err(|_| std::fmt::Error)?;
+
+        f.write_str(&str)
     }
 }
 
 struct Markdown(FileInfo, Analysis);
+
+impl From<AnalyzerOutput> for Markdown {
+    fn from(value: AnalyzerOutput) -> Self {
+        Self(value.0, value.1)
+    }
+}
 
 impl Markdown {
     fn md_escape(str: &str) -> String {

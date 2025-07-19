@@ -29,17 +29,33 @@ Click the checkbox next to a player in the scoreboard to filter for their result
 
 ### CLI mode
 
-Run the `dod-tools-cli` program and provide a file path to a demo as an argument:
+<!-- help-start -->
 
 ```text
-dod-tools-cli.exe "C:\path\to\demo-file.dem"
+Usage: dod-tools-cli.exe [OPTIONS] [DEMO_PATHS]...
+
+Arguments:
+  [DEMO_PATHS]...
+          List of paths to demo files
+
+Options:
+      --output-format <OUTPUT_FORMAT>
+          The kind of string output to produce from an analysis
+
+          [default: markdown]
+
+          Possible values:
+          - markdown: Markdown document best used in combination with a Markdown renderer
+          - json:     JSON string for automated tools or custom visualization
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
 ```
 
-Multiple files can be provided at once:
-
-```text
-dod-tools-cli.exe "C:\path\to\first-demo-file.dem" "C:\path\to\second-demo-file.dem" > reports.md
-```
+<!-- help-end -->
 
 #### Example 1: Viewing with a Markdown renderer (recommended)
 
@@ -62,7 +78,7 @@ dod-tools-cli.exe "C:\path\to\demo-file.dem" | clip
 The report contents will be in your clipboard now. Paste this into something that can render Markdown text as HTML (see
 above).
 
-#### Example 2: Aggregating results from a list of files
+#### Example 2: Aggregating results from a list of files into a Markdown document
 
 If you have a list of files in a directory you want to analyze at once, run the program on each file and aggregate the
 results into a single file.
@@ -72,3 +88,11 @@ Get-ChildItem "C:\path\to\demos\*.dem" | ForEach-Object { & dod-tools-cli.exe $_
 ```
 
 A `reports.md` file will be created with sections for each of the files.
+
+#### Example 3: JSON output
+
+Use the `--output-format json` option to print an array of JSON objects.
+
+```text
+dod-tools-cli.exe --output-format json "C:\path\to\demo-file.dem" > report.json
+```

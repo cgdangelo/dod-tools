@@ -157,8 +157,9 @@ pub enum AnalyzerEvent<'a> {
 
 #[derive(Debug, Default)]
 pub struct AnalyzerState {
-    pub clan_match_detection: ClanMatchDetection,
-    pub current_time: GameTime,
+    clan_match_detection: ClanMatchDetection,
+    current_time: GameTime,
+
     pub players: Vec<Player>,
     pub rounds: Vec<Round>,
     pub team_scores: TeamScores,

@@ -68,7 +68,7 @@ impl FromIterator<AnalyzerOutput> for Json {
                         "id": id,
                         "name": player.name,
                         "team": player.team.clone().map(|t| format!("{t:?}").to_lowercase()),
-                        "points": player.stats.0,
+                        "score": player.stats.0,
                         "kills": player.stats.1,
                         "deaths": player.stats.2,
                     })

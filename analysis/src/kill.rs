@@ -1,6 +1,5 @@
+use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
 use dod::{Message, RoundState, Weapon};
-use crate::{AnalyzerEvent, AnalyzerState};
-use crate::time::GameTime;
 
 #[derive(Debug, Default)]
 pub struct KillStreak {

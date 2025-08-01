@@ -1,5 +1,4 @@
-use crate::time::GameTime;
-use crate::{AnalyzerEvent, AnalyzerState};
+use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
 use dod::{Message, Team};
 use std::collections::HashMap;
 
@@ -55,7 +54,7 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
 
 #[derive(Debug, Default)]
 pub struct TeamScores {
-    pub(crate) current_scores: HashMap<Team, i32>,
+    current_scores: HashMap<Team, i32>,
     timeline: Vec<(GameTime, Team, i32)>,
 }
 

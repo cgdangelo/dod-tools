@@ -1,10 +1,9 @@
+use crate::{AnalyzerEvent, AnalyzerState, kill::KillStreak};
+use dem::types::EngineMessage;
 use dod::{Class, Team, Weapon};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use dem::types::EngineMessage;
-use crate::{AnalyzerEvent, AnalyzerState};
-use crate::kill::KillStreak;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct PlayerGlobalId(String);

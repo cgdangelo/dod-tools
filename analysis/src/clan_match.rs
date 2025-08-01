@@ -1,7 +1,6 @@
-use crate::{AnalyzerEvent, AnalyzerState};
+use crate::{time::GameTime, AnalyzerEvent, AnalyzerState};
 use dod::{Message, RoundState, Team};
 use std::time::Duration;
-use crate::time::GameTime;
 
 pub fn use_clan_match_detection_updates(
     max_normal_duration_from_reset: Duration,
@@ -27,11 +26,8 @@ pub fn use_clan_match_detection_updates(
                     .players
                     .iter()
                     .all(|player| matches!(player.stats, (0, _, _)))
-                    && state
-                        .team_scores
-                        .current_scores
-                        .iter()
-                        .all(|(_, score)| *score == 0)
+                    && state.team_scores.get_team_score(Team::Allies) == 0
+                    && state.team_scores.get_team_score(Team::Axis) == 0
                 {
                     state.rounds.clear();
                     state.rounds.push(Round::Active {

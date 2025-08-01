@@ -3,8 +3,8 @@
 use analysis::{Analysis, Round, SteamId, Team};
 use clap::{Parser, ValueEnum};
 use humantime::{format_duration, format_rfc3339_seconds};
-use native::{FileInfo, run_analyzer};
-use serde_json::{Value, json};
+use native::{run_analyzer, FileInfo};
+use serde_json::{json, Value};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;

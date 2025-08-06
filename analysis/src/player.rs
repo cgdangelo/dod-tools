@@ -70,6 +70,45 @@ impl Player {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SteamId(String);
+
+impl Display for SteamId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl TryFrom<&PlayerGlobalId> for SteamId {
+    type Error = std::num::ParseIntError;
+
+    fn try_from(value: &PlayerGlobalId) -> Result<Self, Self::Error> {
+        // https://github.com/jpcy/coldemoplayer/blob/9c97ab128ac889739c1643baf0d5fdf884d8a65f/compLexity%20Demo%20Player/Common.cs#L364-L383
+        let id64 = value.to_string().parse::<u64>()?;
+        let universe = 0; // Public
+
+        let account_id = id64 - 76561197960265728;
+        let server_id = if account_id % 2 == 0 { 0 } else { 1 };
+        let account_id = (account_id - server_id) / 2;
+
+        let steam_id = format!("STEAM_{}:{}:{}", universe, account_id & 1, account_id);
+
+        Ok(SteamId(steam_id))
+    }
+}
+
+/// Represents whether a [Player] is connected to the server.
+#[derive(Debug)]
+pub enum ConnectionStatus {
+    /// Player is currently connected to the server.
+    Connected {
+        /// Identifier assigned by the server that represents the [Player]'s connection.
+        client_id: u8,
+    },
+
+    Disconnected,
+}
+
 pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     let svc_update_user_info = match event {
         AnalyzerEvent::EngineMessage(EngineMessage::SvcUpdateUserInfo(msg)) => Some(msg),
@@ -164,43 +203,4 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
                 );
         }
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SteamId(String);
-
-impl Display for SteamId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl TryFrom<&PlayerGlobalId> for SteamId {
-    type Error = std::num::ParseIntError;
-
-    fn try_from(value: &PlayerGlobalId) -> Result<Self, Self::Error> {
-        // https://github.com/jpcy/coldemoplayer/blob/9c97ab128ac889739c1643baf0d5fdf884d8a65f/compLexity%20Demo%20Player/Common.cs#L364-L383
-        let id64 = value.to_string().parse::<u64>()?;
-        let universe = 0; // Public
-
-        let account_id = id64 - 76561197960265728;
-        let server_id = if account_id % 2 == 0 { 0 } else { 1 };
-        let account_id = (account_id - server_id) / 2;
-
-        let steam_id = format!("STEAM_{}:{}:{}", universe, account_id & 1, account_id);
-
-        Ok(SteamId(steam_id))
-    }
-}
-
-/// Represents whether a [Player] is connected to the server.
-#[derive(Debug)]
-pub enum ConnectionStatus {
-    /// Player is currently connected to the server.
-    Connected {
-        /// Identifier assigned by the server that represents the [Player]'s connection.
-        client_id: u8,
-    },
-
-    Disconnected,
 }

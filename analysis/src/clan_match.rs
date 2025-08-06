@@ -1,6 +1,31 @@
-use crate::{time::GameTime, AnalyzerEvent, AnalyzerState};
+use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
 use dod::{Message, RoundState, Team};
 use std::time::Duration;
+
+#[derive(Debug)]
+pub enum Round {
+    Active {
+        allies_kills: u32,
+        axis_kills: u32,
+        start_time: GameTime,
+    },
+
+    Completed {
+        start_time: GameTime,
+        end_time: GameTime,
+        winner_stats: Option<(Team, u32)>,
+    },
+}
+
+#[derive(Debug, Default)]
+pub enum ClanMatchDetection {
+    #[default]
+    WaitingForReset,
+    WaitingForNormal {
+        reset_time: GameTime,
+    },
+    MatchIsLive,
+}
 
 pub fn use_clan_match_detection_updates(
     max_normal_duration_from_reset: Duration,
@@ -55,31 +80,6 @@ pub fn use_clan_match_detection_updates(
             state.clan_match_detection = ClanMatchDetection::WaitingForReset;
         }
     }
-}
-
-#[derive(Debug)]
-pub enum Round {
-    Active {
-        allies_kills: u32,
-        axis_kills: u32,
-        start_time: GameTime,
-    },
-
-    Completed {
-        start_time: GameTime,
-        end_time: GameTime,
-        winner_stats: Option<(Team, u32)>,
-    },
-}
-
-#[derive(Debug, Default)]
-pub enum ClanMatchDetection {
-    #[default]
-    WaitingForReset,
-    WaitingForNormal {
-        reset_time: GameTime,
-    },
-    MatchIsLive,
 }
 
 pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {

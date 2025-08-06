@@ -2,6 +2,35 @@ use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
 use dod::{Message, Team};
 use std::collections::HashMap;
 
+#[derive(Debug, Default)]
+pub struct TeamScores {
+    current_scores: HashMap<Team, i32>,
+    timeline: Vec<(GameTime, Team, i32)>,
+}
+
+impl TeamScores {
+    pub fn get_team_score(&self, team: Team) -> i32 {
+        self.timeline
+            .iter()
+            .rfind(|(_, t, _)| *t == team)
+            .map(|(_, _, points)| *points)
+            .unwrap_or(0)
+    }
+
+    pub fn add_team_score(&mut self, game_time: GameTime, team: Team, points: i32) {
+        self.timeline.push((game_time, team, points));
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(GameTime, Team, i32)> {
+        self.timeline.iter()
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.current_scores.clear();
+        self.timeline.clear();
+    }
+}
+
 pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     match event {
         AnalyzerEvent::UserMessage(Message::PClass(p_class)) => {
@@ -50,35 +79,6 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
 
         _ => {}
     };
-}
-
-#[derive(Debug, Default)]
-pub struct TeamScores {
-    current_scores: HashMap<Team, i32>,
-    timeline: Vec<(GameTime, Team, i32)>,
-}
-
-impl TeamScores {
-    pub fn get_team_score(&self, team: Team) -> i32 {
-        self.timeline
-            .iter()
-            .rfind(|(_, t, _)| *t == team)
-            .map(|(_, _, points)| *points)
-            .unwrap_or(0)
-    }
-
-    pub fn add_team_score(&mut self, game_time: GameTime, team: Team, points: i32) {
-        self.timeline.push((game_time, team, points));
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &(GameTime, Team, i32)> {
-        self.timeline.iter()
-    }
-
-    pub(crate) fn reset(&mut self) {
-        self.current_scores.clear();
-        self.timeline.clear();
-    }
 }
 
 pub fn use_team_score_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {

@@ -13,7 +13,7 @@ use crate::{
 };
 use dem::{
     open_demo_from_bytes,
-    types::{EngineMessage, Frame, FrameData, MessageData, NetMessage},
+    types::{Demo, EngineMessage, Frame, FrameData, MessageData, NetMessage},
 };
 use dod::Message;
 use std::time::Duration;
@@ -42,9 +42,32 @@ pub struct AnalyzerState {
 }
 
 pub struct DemoInfo {
+    /// Version of the demo protocol used to encode the demo.
     pub demo_protocol: i32,
-    pub network_protocol: i32,
+
+    /// Name of the map the demo was recorded on.
     pub map_name: String,
+
+    /// Version of the network protocol used during the game.
+    pub network_protocol: i32,
+}
+
+impl From<Demo> for DemoInfo {
+    fn from(value: Demo) -> Self {
+        let map_name = value
+            .header
+            .map_name
+            .to_str()
+            .map(|s| s.trim_end_matches('\x00'))
+            .unwrap()
+            .to_string();
+
+        Self {
+            demo_protocol: value.header.demo_protocol,
+            map_name,
+            network_protocol: value.header.network_protocol,
+        }
+    }
 }
 
 pub struct Analysis {
@@ -53,16 +76,23 @@ pub struct Analysis {
 }
 
 impl Analysis {
+    pub fn new(demo_info: DemoInfo, state: AnalyzerState) -> Self {
+        Self { demo_info, state }
+    }
+
     pub fn from_bytes(i: &[u8]) -> Self {
         let demo = open_demo_from_bytes(i).expect("Could not parse the file");
 
-        let events = vec![AnalyzerEvent::Initialization].into_iter().chain(
-            demo.directory
-                .entries
-                .iter()
-                .flat_map(|entry| entry.frames.iter().flat_map(frame_to_events))
-                .chain(vec![AnalyzerEvent::Finalization]),
-        );
+        let events = vec![AnalyzerEvent::Initialization]
+            .into_iter()
+            .chain(
+                demo.directory
+                    .entries
+                    .iter()
+                    .flat_map(|entry| entry.frames.iter())
+                    .flat_map(frame_to_events),
+            )
+            .chain(vec![AnalyzerEvent::Finalization]);
 
         let state = events.fold(AnalyzerState::default(), |mut state, ref event| {
             use_timing_updates(&mut state, event);
@@ -77,43 +107,27 @@ impl Analysis {
             state
         });
 
-        let map_name = demo
-            .header
-            .map_name
-            .to_str()
-            .map(|s| s.trim_end_matches('\x00'))
-            .unwrap()
-            .to_string();
-
-        let demo_info = DemoInfo {
-            demo_protocol: demo.header.demo_protocol,
-            map_name,
-            network_protocol: demo.header.network_protocol,
-        };
-
-        Analysis { state, demo_info }
+        Analysis::new(demo.into(), state)
     }
 }
 
 impl AnalyzerState {
     fn find_player_by_client_index(&self, client_index: u8) -> Option<&Player> {
-        self.players.iter().find(|player| {
-            if let ConnectionStatus::Connected { client_id } = player.connection_status {
-                client_id == client_index
-            } else {
-                false
-            }
-        })
+        self.players
+            .iter()
+            .find(|player| match player.connection_status {
+                ConnectionStatus::Connected { client_id } => client_id == client_index,
+                _ => false,
+            })
     }
 
     fn find_player_by_client_index_mut(&mut self, client_index: u8) -> Option<&mut Player> {
-        self.players.iter_mut().find(|player| {
-            if let ConnectionStatus::Connected { client_id } = player.connection_status {
-                client_id == client_index
-            } else {
-                false
-            }
-        })
+        self.players
+            .iter_mut()
+            .find(|player| match player.connection_status {
+                ConnectionStatus::Connected { client_id } => client_id == client_index,
+                _ => false,
+            })
     }
 
     fn find_player_by_id(&self, id: &PlayerGlobalId) -> Option<&Player> {

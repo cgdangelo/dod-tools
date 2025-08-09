@@ -4,25 +4,25 @@ mod player;
 mod scoreboard;
 mod time;
 
-pub use clan_match::Round;
-pub use dod::Team;
-pub use player::{ConnectionStatus, Player, PlayerGlobalId, SteamId};
-
 use crate::{
     clan_match::{ClanMatchDetection, use_clan_match_detection_updates, use_rounds_updates},
     kill::{use_kill_streak_updates, use_weapon_breakdown_updates},
     player::use_player_updates,
-    scoreboard::{use_scoreboard_updates, use_team_score_updates},
-    time::use_timing_updates,
+    scoreboard::{TeamScores, use_scoreboard_updates, use_team_score_updates},
+    time::{GameTime, use_timing_updates},
 };
 use dem::{
     open_demo_from_bytes,
     types::{EngineMessage, Frame, FrameData, MessageData, NetMessage},
 };
 use dod::Message;
-use scoreboard::TeamScores;
 use std::time::Duration;
-use time::GameTime;
+
+pub use crate::{
+    clan_match::Round,
+    player::{ConnectionStatus, Player, PlayerGlobalId, SteamId},
+};
+pub use dod::Team;
 
 pub enum AnalyzerEvent<'a> {
     Initialization,

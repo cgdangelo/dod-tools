@@ -3,9 +3,8 @@
 use analysis::{Analysis, Round, SteamId, Team};
 use clap::{Parser, ValueEnum};
 use humantime::{format_duration, format_rfc3339_seconds};
-use native::{run_analyzer, FileInfo};
-use serde_json::{json, Value};
-use std::cmp::Ordering;
+use native::{FileInfo, run_analyzer};
+use serde_json::{Value, json};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
@@ -127,21 +126,6 @@ impl Markdown {
 
 impl Display for Markdown {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // Players sorted by team then kills
-        let mut ordered_players = Vec::from_iter(&self.1.state.players);
-
-        ordered_players.sort_by(|left, right| match (&left.team, &right.team) {
-            (Some(left_team), Some(right_team)) if left_team == right_team => {
-                left.stats.0.cmp(&right.stats.0).reverse()
-            }
-
-            (Some(Team::Allies), _) => Ordering::Less,
-            (Some(Team::Axis), Some(Team::Spectators)) => Ordering::Less,
-            (Some(Team::Spectators) | None, _) => Ordering::Greater,
-
-            _ => Ordering::Equal,
-        });
-
         // Header section
         {
             let file_name = &self.0.name;
@@ -169,7 +153,7 @@ impl Display for Markdown {
             let mut table_builder = Builder::default();
             table_builder.push_record(["ID", "Name", "Team", "Class", "Score", "Kills", "Deaths"]);
 
-            for player in &ordered_players {
+            for player in &self.1.state.players {
                 table_builder.push_record([
                     player.id.to_string(),
                     Self::md_escape(&player.name),
@@ -268,7 +252,7 @@ impl Display for Markdown {
         {
             writeln!(f, "## Player Summaries\n")?;
 
-            for player in &ordered_players {
+            for player in &self.1.state.players {
                 writeln!(f, "### {}\n", Self::md_escape(&player.name))?;
 
                 // Kills per weapon section

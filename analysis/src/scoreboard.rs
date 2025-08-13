@@ -1,5 +1,6 @@
 use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
 use dod::{Message, Team};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 #[derive(Debug, Default)]
@@ -75,6 +76,26 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
             if let Some(player) = player {
                 player.stats.1 = frags.frags as i32;
             }
+        }
+
+        AnalyzerEvent::Finalization => {
+            state
+                .players
+                .sort_by(|left, right| match (&left.team, &right.team) {
+                    (Some(left_team), Some(right_team)) if left_team == right_team => {
+                        let by_points = left.stats.0.cmp(&right.stats.0).reverse();
+                        let by_kills = left.stats.1.cmp(&right.stats.1).reverse();
+                        let by_deaths = left.stats.2.cmp(&right.stats.2);
+
+                        by_points.then(by_kills).then(by_deaths)
+                    }
+
+                    (Some(Team::Allies), _) => Ordering::Less,
+                    (Some(Team::Axis), Some(Team::Spectators)) => Ordering::Less,
+                    (Some(Team::Spectators) | None, _) => Ordering::Greater,
+
+                    _ => Ordering::Equal,
+                });
         }
 
         _ => {}

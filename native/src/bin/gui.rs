@@ -4,19 +4,18 @@
 
 use analysis::{Analysis, Player, PlayerGlobalId, Round, SteamId, Team};
 use egui::{
-    panel::Side, Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label,
-    Layout, ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window,
+    Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label, Layout,
+    ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window, panel::Side,
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
 use egui_plot::{Corner, Legend, Line, Plot, PlotPoints};
 use humantime::{format_duration, format_rfc3339_seconds};
-use native::{run_analyzer, FileInfo};
-use std::cmp::Ordering;
+use native::{FileInfo, run_analyzer};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
 #[tokio::main]
@@ -363,24 +362,7 @@ fn scoreboard_ui(r: &Analysis, player_highlighting: &mut PlayerHighlighting, ui:
                     }
                 })
                 .body(|ref mut body| {
-                    // Players sorted by team > score > kills
-                    let mut players = Vec::from_iter(&r.state.players);
-
-                    players.sort_by(|left, right| match (&left.team, &right.team) {
-                        (Some(left_team), Some(right_team)) if left_team == right_team => {
-                            if left.stats.0 == right.stats.0 {
-                                left.stats.1.cmp(&right.stats.1).reverse()
-                            } else {
-                                left.stats.0.cmp(&right.stats.0).reverse()
-                            }
-                        }
-
-                        (Some(Team::Allies), _) => Ordering::Less,
-                        (Some(Team::Axis), Some(Team::Spectators)) => Ordering::Less,
-                        (Some(Team::Spectators) | None, _) => Ordering::Greater,
-
-                        _ => Ordering::Equal,
-                    });
+                    let players = Vec::from_iter(&r.state.players);
 
                     for p in players {
                         scoreboard_row_ui(p, player_highlighting, body);

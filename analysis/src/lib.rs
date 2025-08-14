@@ -1,15 +1,17 @@
 mod clan_match;
 mod kill;
 mod player;
+mod round;
 mod scoreboard;
 mod time;
 
 use crate::{
-    clan_match::{ClanMatchDetection, use_clan_match_detection_updates, use_rounds_updates},
+    clan_match::{use_clan_match_detection_updates, ClanMatchDetection},
     kill::{use_kill_streak_updates, use_weapon_breakdown_updates},
     player::use_player_updates,
-    scoreboard::{TeamScores, use_scoreboard_updates, use_team_score_updates},
-    time::{GameTime, use_timing_updates},
+    round::use_rounds_updates,
+    scoreboard::{use_scoreboard_updates, use_team_score_updates, TeamScores},
+    time::{use_timing_updates, GameTime},
 };
 use dem::{
     open_demo_from_bytes,
@@ -19,8 +21,8 @@ use dod::Message;
 use std::time::Duration;
 
 pub use crate::{
-    clan_match::Round,
     player::{ConnectionStatus, Player, PlayerGlobalId, SteamId},
+    round::Round,
 };
 pub use dod::Team;
 

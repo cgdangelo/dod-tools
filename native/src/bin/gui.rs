@@ -3,19 +3,20 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use analysis::{Analysis, Player, PlayerGlobalId, Round, SteamId, Team};
+
 use egui::{
-    Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label, Layout,
-    ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window, panel::Side,
+    panel::Side, Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label,
+    Layout, ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window,
 };
 use egui_extras::{Column, TableBody, TableBuilder};
 use egui_file_dialog::FileDialog;
 use egui_plot::{Corner, Legend, Line, Plot, PlotPoints};
 use humantime::{format_duration, format_rfc3339_seconds};
-use native::{FileInfo, run_analyzer};
+use native::{run_analyzer, FileInfo};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
 #[tokio::main]

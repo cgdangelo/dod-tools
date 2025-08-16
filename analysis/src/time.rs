@@ -19,13 +19,13 @@ impl Default for GameTime {
 }
 
 pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::EngineMessage(EngineMessage::SvcTime(svc_time)) = event {
-        if svc_time.time > 0. {
-            let mut next_time = state.current_time.clone();
+    if let AnalyzerEvent::EngineMessage(EngineMessage::SvcTime(svc_time)) = event
+        && svc_time.time > 0.
+    {
+        let mut next_time = state.current_time.clone();
 
-            next_time.offset = Duration::from_secs_f32(svc_time.time);
+        next_time.offset = Duration::from_secs_f32(svc_time.time);
 
-            state.current_time = next_time;
-        }
+        state.current_time = next_time;
     }
 }

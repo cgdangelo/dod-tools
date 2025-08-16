@@ -60,9 +60,8 @@ pub fn use_clan_match_detection_updates(
             _ => {}
         }
     } else if let ClanMatchDetection::WaitingForNormal { reset_time } = &state.clan_match_detection
+        && state.current_time.offset - reset_time.offset > max_normal_duration_from_reset
     {
-        if state.current_time.offset - reset_time.offset > max_normal_duration_from_reset {
-            state.clan_match_detection = ClanMatchDetection::WaitingForReset;
-        }
+        state.clan_match_detection = ClanMatchDetection::WaitingForReset;
     }
 }

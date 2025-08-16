@@ -141,21 +141,21 @@ impl AnalyzerState {
     }
 }
 
-pub fn frame_to_events(frame: &Frame) -> Vec<AnalyzerEvent> {
+pub fn frame_to_events(frame: &'_ Frame) -> Vec<AnalyzerEvent<'_>> {
     let mut events: Vec<AnalyzerEvent> = vec![];
 
-    if let FrameData::NetworkMessage(frame_data) = &frame.frame_data {
-        if let MessageData::Parsed(msgs) = &frame_data.1.messages {
-            for net_msg in msgs {
-                match net_msg {
-                    NetMessage::UserMessage(user_msg) => {
-                        if let Ok(dod_msg) = Message::new(&user_msg.name, &user_msg.data) {
-                            events.push(AnalyzerEvent::UserMessage(dod_msg));
-                        }
+    if let FrameData::NetworkMessage(frame_data) = &frame.frame_data
+        && let MessageData::Parsed(msgs) = &frame_data.1.messages
+    {
+        for net_msg in msgs {
+            match net_msg {
+                NetMessage::UserMessage(user_msg) => {
+                    if let Ok(dod_msg) = Message::new(&user_msg.name, &user_msg.data) {
+                        events.push(AnalyzerEvent::UserMessage(dod_msg));
                     }
-                    NetMessage::EngineMessage(engine_msg) => {
-                        events.push(AnalyzerEvent::EngineMessage(engine_msg));
-                    }
+                }
+                NetMessage::EngineMessage(engine_msg) => {
+                    events.push(AnalyzerEvent::EngineMessage(engine_msg));
                 }
             }
         }

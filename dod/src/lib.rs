@@ -239,6 +239,8 @@ pub struct ClCorpse {
 /// - Frequency: unknown trigger; often in POV, once in HLTV
 /// - Length: variable; often 2
 /// - Values:
+///
+/// ```text
 ///     CAreaCapture::area_SendStatus = {m_iAreaIndex, -1, sz_HudIcon}
 ///     CAreaCapture::area_SetIndex = {m_iAreaIndex, -1, sz_HudIcon}
 ///     CBasePlayer::HandleSignals = {m_iCapAreaIconIndex, 0}
@@ -249,6 +251,7 @@ pub struct ClCorpse {
 ///     CDoDTeamPlay::LevelChangeResets = {0, 2}
 ///     CObjectCapture::area_SendStatus = {m_iAreaIndex, -1, sz_HudIcon}
 ///     CObjectCapture::area_SetIndex = {m_iAreaIndex, -1, sz_HudIcon}
+/// ```
 #[derive(Debug)]
 pub struct ClientAreas {
     pub icon_index: u8,
@@ -491,9 +494,12 @@ pub struct SayText {
 ///
 /// - Length: 1
 /// - Value:
+///
+/// ```text
 ///     CBasePlayerWeapon::ZoomIn = m_iId
 ///     CBasePlayerWeapon::ZoomOut = 0
 ///     CDoDTeamPlay::UpdateData
+/// ```
 #[derive(Debug)]
 pub struct Scope {}
 

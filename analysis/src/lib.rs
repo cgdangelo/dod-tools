@@ -6,12 +6,12 @@ mod scoreboard;
 mod time;
 
 use crate::{
-    clan_match::{use_clan_match_detection_updates, ClanMatchDetection},
+    clan_match::{ClanMatchDetection, use_clan_match_detection_updates},
     kill::{use_kill_streak_updates, use_weapon_breakdown_updates},
     player::use_player_updates,
     round::use_rounds_updates,
-    scoreboard::{use_scoreboard_updates, use_team_score_updates, TeamScores},
-    time::{use_timing_updates, GameTime},
+    scoreboard::{TeamScores, use_scoreboard_updates, use_team_score_updates},
+    time::{GameTime, use_timing_updates},
 };
 use dem::{
     open_demo_from_bytes,

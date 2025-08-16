@@ -1,4 +1,4 @@
-use crate::{round::Round, time::GameTime, AnalyzerEvent, AnalyzerState};
+use crate::{AnalyzerEvent, AnalyzerState, round::Round, time::GameTime};
 use dod::{Message, RoundState, Team};
 use std::time::Duration;
 

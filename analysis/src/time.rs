@@ -32,18 +32,10 @@ pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     if let AnalyzerEvent::EngineMessage(EngineMessage::SvcTime(svc_time)) = event {
         let offset = Duration::from_secs_f32(svc_time.time);
 
-        if offset > state.current_time.real_offset
-            || state.current_time.real_offset == Duration::ZERO
-        {
-            state.current_time.viewdemo_offset = offset;
-        }
+        state.current_time.viewdemo_offset = offset;
     } else if let AnalyzerEvent::RealTimeChange(value) = event {
         let offset = Duration::from_secs_f32(*value);
 
-        if offset > state.current_time.real_offset
-            || state.current_time.real_offset == Duration::ZERO
-        {
-            state.current_time.real_offset = offset;
-        }
+        state.current_time.real_offset = offset;
     }
 }

@@ -471,7 +471,7 @@ fn team_score_timeline_ui(r: &Analysis, ui: &mut Ui) {
                         .iter()
                         .filter_map(move |(time, t, score)| {
                             if *t == team {
-                                Some([time.offset.as_secs_f64(), *score as f64])
+                                Some([time.viewdemo_offset.as_secs_f64(), *score as f64])
                             } else {
                                 None
                             }
@@ -529,7 +529,7 @@ fn rounds_ui(r: &Analysis, ui: &mut Ui) {
                         winner_stats,
                     } = round
                     {
-                        match_duration += end_time.offset - start_time.offset;
+                        match_duration += end_time - start_time;
 
                         ui.row(TABLE_ROW_HEIGHT, |mut row| {
                             row.col(|ui| {
@@ -549,15 +549,16 @@ fn rounds_ui(r: &Analysis, ui: &mut Ui) {
                             });
 
                             row.col(|ui| {
-                                let start_time =
-                                    Duration::from_millis(start_time.offset.as_millis() as u64);
+                                let start_time = Duration::from_millis(
+                                    start_time.viewdemo_offset.as_millis() as u64,
+                                );
 
                                 ui.label(format_duration(start_time).to_string());
                             });
 
                             row.col(|ui| {
                                 let duration = Duration::from_millis(
-                                    (end_time.offset - start_time.offset).as_millis() as u64,
+                                    (end_time - start_time).as_millis() as u64,
                                 );
 
                                 ui.label(format_duration(duration).to_string());
@@ -745,13 +746,13 @@ fn kill_streaks_table_ui(p: &Player, ui: &mut Ui) {
                         });
 
                         row.col(|ui| {
-                            let start = Duration::new(start.offset.as_secs(), 0);
+                            let start = Duration::new(start.viewdemo_offset.as_secs(), 0);
 
                             ui.label(format_duration(start).to_string());
                         });
 
                         row.col(|ui| {
-                            let duration = Duration::new((end.offset - start.offset).as_secs(), 0);
+                            let duration = Duration::new((end - start).as_secs(), 0);
 
                             ui.label(format_duration(duration).to_string());
                         });

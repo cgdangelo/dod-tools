@@ -218,8 +218,8 @@ impl Display for Markdown {
                 },
             )) = rounds.next()
             {
-                let duration = Duration::new((end_time.offset - start_time.offset).as_secs(), 0);
-                let start_time = Duration::new(start_time.offset.as_secs(), 0);
+                let duration = Duration::new((end_time - start_time).as_secs(), 0);
+                let start_time = Duration::new(start_time.viewdemo_offset.as_secs(), 0);
 
                 table_builder.push_record([
                     (i + 1).to_string(),
@@ -290,9 +290,9 @@ impl Display for Markdown {
                     if let (Some((start_time, _)), Some((end_time, _))) =
                         (kill_streak.kills.first(), kill_streak.kills.last())
                     {
-                        let start_time_offset = Duration::new(start_time.offset.as_secs(), 0);
-                        let streak_duration =
-                            Duration::new((end_time.offset - start_time.offset).as_secs(), 0);
+                        let start_time_offset =
+                            Duration::new(start_time.viewdemo_offset.as_secs(), 0);
+                        let streak_duration = Duration::new((end_time - start_time).as_secs(), 0);
 
                         let weapons_used = kill_streak
                             .kills

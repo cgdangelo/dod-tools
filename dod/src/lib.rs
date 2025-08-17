@@ -30,7 +30,7 @@ pub enum Version {
 }
 
 #[derive(Debug)]
-pub enum Message {
+pub enum UserMessage {
     AmmoPickup(AmmoPickup),
     AmmoShort(AmmoShort),
     AmmoX(AmmoX),
@@ -806,8 +806,8 @@ fn weapon(i: &[u8]) -> IResult<&[u8], Weapon> {
         .parse(i)
 }
 
-impl Message {
-    pub fn new<'a>(msg_name: &'a [u8], msg_data: &'a [u8]) -> Result<Message, Error> {
+impl UserMessage {
+    pub fn new<'a>(msg_name: &'a [u8], msg_data: &'a [u8]) -> Result<UserMessage, Error> {
         let msg_name = from_utf8(msg_name).map_err(|_| Error::ParserError)?;
         let message_name = msg_name.trim_end_matches('\x00');
         let i = msg_data;
@@ -855,7 +855,7 @@ impl Message {
             "WaveTime" => wave_time.map(Self::WaveTime).parse(i),
             "WeaponList" => weapon_list.map(Self::WeaponList).parse(i),
             "YouDied" => you_died.map(Self::YouDied).parse(i),
-            _ => context("Unknown message", fail::<&[u8], Message, _>()).parse(i),
+            _ => context("Unknown message", fail::<&[u8], UserMessage, _>()).parse(i),
         }
         .map_err(|_| Error::ParserError)?;
 

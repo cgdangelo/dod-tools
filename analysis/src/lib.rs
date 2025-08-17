@@ -17,7 +17,7 @@ use dem::{
     open_demo_from_bytes,
     types::{Demo, EngineMessage, MessageData, NetMessage},
 };
-use dod::Message;
+use dod::UserMessage;
 use std::time::Duration;
 
 pub use crate::{
@@ -31,7 +31,7 @@ pub enum AnalyzerEvent<'a> {
     Finalization,
 
     EngineMessage(&'a EngineMessage),
-    UserMessage(Message),
+    UserMessage(UserMessage),
 
     RealTimeChange(f32),
 }
@@ -45,9 +45,11 @@ impl<'a> AnalyzerEvent<'a> {
             }
             .filter_map(|net_msg| match net_msg {
                 NetMessage::EngineMessage(engine_msg) => Some(Self::EngineMessage(engine_msg)),
-                NetMessage::UserMessage(user_msg) => Message::new(&user_msg.name, &user_msg.data)
-                    .ok()
-                    .map(Self::UserMessage),
+                NetMessage::UserMessage(user_msg) => {
+                    UserMessage::new(&user_msg.name, &user_msg.data)
+                        .ok()
+                        .map(Self::UserMessage)
+                }
             })
             .collect(),
 

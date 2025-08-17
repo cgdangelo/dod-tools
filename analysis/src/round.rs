@@ -1,6 +1,6 @@
 use crate::time::GameTime;
 use crate::{AnalyzerEvent, AnalyzerState};
-use dod::{Message, RoundState, Team};
+use dod::{RoundState, Team, UserMessage};
 
 #[derive(Debug)]
 pub enum Round {
@@ -39,7 +39,7 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             }
         }
 
-        AnalyzerEvent::UserMessage(Message::RoundState(round_state)) => {
+        AnalyzerEvent::UserMessage(UserMessage::RoundState(round_state)) => {
             match round_state {
                 RoundState::Reset => {
                     state.rounds.push(Round::Active {
@@ -83,7 +83,7 @@ pub fn use_rounds_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             };
         }
 
-        AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) => {
+        AnalyzerEvent::UserMessage(UserMessage::DeathMsg(death_msg)) => {
             let killer = state.find_player_by_client_index(death_msg.killer_client_index - 1);
             let victim = state.find_player_by_client_index(death_msg.victim_client_index - 1);
 

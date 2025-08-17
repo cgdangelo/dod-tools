@@ -1,5 +1,5 @@
 use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
-use dod::{Message, RoundState, Weapon};
+use dod::{RoundState, UserMessage, Weapon};
 
 #[derive(Debug, Default)]
 pub struct KillStreak {
@@ -7,7 +7,7 @@ pub struct KillStreak {
 }
 
 pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
+    if let AnalyzerEvent::UserMessage(UserMessage::DeathMsg(death_msg)) = event {
         let current_time = state.current_time.clone();
 
         let killer = state.find_player_by_client_index(death_msg.killer_client_index - 1);
@@ -42,7 +42,7 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
                     .push((current_time, death_msg.weapon.clone()));
             }
         }
-    } else if let AnalyzerEvent::UserMessage(Message::RoundState(RoundState::Reset)) = event {
+    } else if let AnalyzerEvent::UserMessage(UserMessage::RoundState(RoundState::Reset)) = event {
         // Active kill streaks must be terminated when round is reset (i.e., after all objectives are captured)
         for player in state.players.iter_mut() {
             player.kill_streaks.push(KillStreak::default());
@@ -51,7 +51,7 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
 }
 
 pub fn use_weapon_breakdown_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::UserMessage(Message::DeathMsg(death_msg)) = event {
+    if let AnalyzerEvent::UserMessage(UserMessage::DeathMsg(death_msg)) = event {
         let killer = state.find_player_by_client_index(death_msg.killer_client_index - 1);
         let victim = state.find_player_by_client_index(death_msg.victim_client_index - 1);
 

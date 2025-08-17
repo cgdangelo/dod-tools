@@ -1,5 +1,5 @@
-use crate::{round::Round, time::GameTime, AnalyzerEvent, AnalyzerState};
-use dod::{Message, RoundState, Team};
+use crate::{AnalyzerEvent, AnalyzerState, round::Round, time::GameTime};
+use dod::{RoundState, Team, UserMessage};
 use std::time::Duration;
 
 #[derive(Debug, Default)]
@@ -21,7 +21,7 @@ pub fn use_clan_match_detection_updates(
         // Assume the first RoundState with a reset is the match going live
         (
             ClanMatchDetection::WaitingForReset,
-            AnalyzerEvent::UserMessage(Message::RoundState(RoundState::Reset)),
+            AnalyzerEvent::UserMessage(UserMessage::RoundState(RoundState::Reset)),
         ) => {
             state.clan_match_detection = ClanMatchDetection::WaitingForNormal {
                 reset_time: state.current_time.clone(),
@@ -31,7 +31,7 @@ pub fn use_clan_match_detection_updates(
         // Players and teams are scoreless after a reset; we infer the match is live
         (
             ClanMatchDetection::WaitingForNormal { reset_time },
-            AnalyzerEvent::UserMessage(Message::RoundState(RoundState::Normal)),
+            AnalyzerEvent::UserMessage(UserMessage::RoundState(RoundState::Normal)),
         ) if state
             .players
             .iter()
@@ -64,9 +64,10 @@ pub fn use_clan_match_detection_updates(
         }
 
         // Match is already live, but we observed a ClanTimer. We infer that match is restarting.
-        (ClanMatchDetection::MatchIsLive, AnalyzerEvent::UserMessage(Message::ClanTimer(_))) => {
-            state.clan_match_detection = ClanMatchDetection::WaitingForReset
-        }
+        (
+            ClanMatchDetection::MatchIsLive,
+            AnalyzerEvent::UserMessage(UserMessage::ClanTimer(_)),
+        ) => state.clan_match_detection = ClanMatchDetection::WaitingForReset,
 
         _ => {}
     };

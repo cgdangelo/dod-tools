@@ -1,5 +1,5 @@
 use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
-use dod::{Message, Team};
+use dod::{Team, UserMessage};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -34,7 +34,7 @@ impl TeamScores {
 
 pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
     match event {
-        AnalyzerEvent::UserMessage(Message::PClass(p_class)) => {
+        AnalyzerEvent::UserMessage(UserMessage::PClass(p_class)) => {
             let player = state.find_player_by_client_index_mut(p_class.client_index - 1);
 
             if let Some(player) = player {
@@ -42,7 +42,7 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
             };
         }
 
-        AnalyzerEvent::UserMessage(Message::PTeam(p_team)) => {
+        AnalyzerEvent::UserMessage(UserMessage::PTeam(p_team)) => {
             let player = state.find_player_by_client_index_mut(p_team.client_index - 1);
 
             if let Some(player) = player {
@@ -50,7 +50,7 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
             };
         }
 
-        AnalyzerEvent::UserMessage(Message::ScoreShort(score_short)) => {
+        AnalyzerEvent::UserMessage(UserMessage::ScoreShort(score_short)) => {
             let player = state.find_player_by_client_index_mut(score_short.client_index - 1);
 
             if let Some(player) = player {
@@ -62,7 +62,7 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
             }
         }
 
-        AnalyzerEvent::UserMessage(Message::ObjScore(obj_score)) => {
+        AnalyzerEvent::UserMessage(UserMessage::ObjScore(obj_score)) => {
             let player = state.find_player_by_client_index_mut(obj_score.client_index - 1);
 
             if let Some(player) = player {
@@ -70,7 +70,7 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
             }
         }
 
-        AnalyzerEvent::UserMessage(Message::Frags(frags)) => {
+        AnalyzerEvent::UserMessage(UserMessage::Frags(frags)) => {
             let player = state.find_player_by_client_index_mut(frags.client_index - 1);
 
             if let Some(player) = player {
@@ -103,7 +103,7 @@ pub fn use_scoreboard_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) 
 }
 
 pub fn use_team_score_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
-    if let AnalyzerEvent::UserMessage(Message::TeamScore(team_score)) = event {
+    if let AnalyzerEvent::UserMessage(UserMessage::TeamScore(team_score)) = event {
         state.team_scores.add_team_score(
             state.current_time.clone(),
             team_score.team.clone(),

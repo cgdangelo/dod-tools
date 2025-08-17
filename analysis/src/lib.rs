@@ -15,7 +15,7 @@ use crate::{
 };
 use dem::{
     open_demo_from_bytes,
-    types::{Demo, EngineMessage, Frame, FrameData, MessageData, NetMessage},
+    types::{Demo, EngineMessage, MessageData, NetMessage},
 };
 use dod::Message;
 use std::time::Duration;
@@ -28,9 +28,34 @@ pub use dod::Team;
 
 pub enum AnalyzerEvent<'a> {
     Initialization,
+    Finalization,
+
     EngineMessage(&'a EngineMessage),
     UserMessage(Message),
-    Finalization,
+
+    RealTimeChange(f32),
+}
+
+impl<'a> AnalyzerEvent<'a> {
+    fn from_dem(frame: &'a dem::types::Frame) -> impl IntoIterator<Item = Self> {
+        let frames: Vec<Self> = match frame.frame_data {
+            dem::types::FrameData::NetworkMessage(ref box_type) => match &box_type.1.messages {
+                MessageData::Parsed(msgs) => msgs.iter(),
+                _ => [].iter(),
+            }
+            .filter_map(|net_msg| match net_msg {
+                NetMessage::EngineMessage(engine_msg) => Some(Self::EngineMessage(engine_msg)),
+                NetMessage::UserMessage(user_msg) => Message::new(&user_msg.name, &user_msg.data)
+                    .ok()
+                    .map(Self::UserMessage),
+            })
+            .collect(),
+
+            _ => vec![Self::RealTimeChange(frame.time)],
+        };
+
+        frames.into_iter()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -78,12 +103,14 @@ pub struct Analysis {
 }
 
 impl Analysis {
-    pub fn new(demo_info: DemoInfo, state: AnalyzerState) -> Self {
+    fn new(demo_info: DemoInfo, state: AnalyzerState) -> Self {
         Self { demo_info, state }
     }
+}
 
-    pub fn from_bytes(i: &[u8]) -> Self {
-        let demo = open_demo_from_bytes(i).expect("Could not parse the file");
+impl<'a> From<&'a [u8]> for Analysis {
+    fn from(value: &'a [u8]) -> Self {
+        let demo = open_demo_from_bytes(value).expect("Could not parse the file");
 
         let events = vec![AnalyzerEvent::Initialization]
             .into_iter()
@@ -92,7 +119,7 @@ impl Analysis {
                     .entries
                     .iter()
                     .flat_map(|entry| entry.frames.iter())
-                    .flat_map(frame_to_events),
+                    .flat_map(AnalyzerEvent::from_dem),
             )
             .chain(vec![AnalyzerEvent::Finalization]);
 
@@ -139,27 +166,4 @@ impl AnalyzerState {
     fn find_player_by_id_mut(&mut self, id: &PlayerGlobalId) -> Option<&mut Player> {
         self.players.iter_mut().find(|player| player.id == *id)
     }
-}
-
-pub fn frame_to_events(frame: &'_ Frame) -> Vec<AnalyzerEvent<'_>> {
-    let mut events: Vec<AnalyzerEvent> = vec![];
-
-    if let FrameData::NetworkMessage(frame_data) = &frame.frame_data
-        && let MessageData::Parsed(msgs) = &frame_data.1.messages
-    {
-        for net_msg in msgs {
-            match net_msg {
-                NetMessage::UserMessage(user_msg) => {
-                    if let Ok(dod_msg) = Message::new(&user_msg.name, &user_msg.data) {
-                        events.push(AnalyzerEvent::UserMessage(dod_msg));
-                    }
-                }
-                NetMessage::EngineMessage(engine_msg) => {
-                    events.push(AnalyzerEvent::EngineMessage(engine_msg));
-                }
-            }
-        }
-    }
-
-    events
 }

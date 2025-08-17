@@ -22,7 +22,7 @@ pub fn run_analyzer(demo_path: &PathBuf) -> (FileInfo, Analysis) {
     file.read_to_end(&mut bytes)
         .expect("Could not read the file");
 
-    let analysis = Analysis::from_bytes(bytes.as_slice());
+    let analysis = Analysis::from(bytes.as_slice());
 
     let created_at = fs::metadata(demo_path)
         .map_err(|_| ())

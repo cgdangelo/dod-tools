@@ -15,7 +15,7 @@ use crate::{
 };
 use dem::{
     open_demo_from_bytes,
-    types::{Demo, EngineMessage, MessageData, NetMessage},
+    types::{Demo, EngineMessage, Frame, FrameData, MessageData, NetMessage},
 };
 use dod::UserMessage;
 use std::time::Duration;
@@ -30,16 +30,19 @@ pub enum AnalyzerEvent<'a> {
     Initialization,
     Finalization,
 
+    Frame(&'a Frame),
     EngineMessage(&'a EngineMessage),
     UserMessage(UserMessage),
-
-    RealTimeChange(f32),
 }
 
 impl<'a> AnalyzerEvent<'a> {
-    fn from_dem(frame: &'a dem::types::Frame) -> impl IntoIterator<Item = Self> {
-        let frames: Vec<Self> = match frame.frame_data {
-            dem::types::FrameData::NetworkMessage(ref box_type) => match &box_type.1.messages {
+    fn from_dem(frame: &'a Frame) -> Vec<Self> {
+        let mut events: Vec<Self> = vec![];
+
+        events.push(AnalyzerEvent::Frame(frame));
+
+        if let FrameData::NetworkMessage(box_type) = &frame.frame_data {
+            match &box_type.1.messages {
                 MessageData::Parsed(msgs) => msgs.iter(),
                 _ => [].iter(),
             }
@@ -51,12 +54,10 @@ impl<'a> AnalyzerEvent<'a> {
                         .map(Self::UserMessage)
                 }
             })
-            .collect(),
-
-            _ => vec![Self::RealTimeChange(frame.time)],
+            .for_each(|event| events.push(event))
         };
 
-        frames.into_iter()
+        events
     }
 }
 

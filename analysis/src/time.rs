@@ -33,8 +33,8 @@ pub fn use_timing_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
         && let Ok(offset) = Duration::try_from_secs_f32(svc_time.time)
     {
         state.current_time.viewdemo_offset = offset;
-    } else if let AnalyzerEvent::RealTimeChange(value) = event
-        && let Ok(offset) = Duration::try_from_secs_f32(*value)
+    } else if let AnalyzerEvent::Frame(frame) = event
+        && let Ok(offset) = Duration::try_from_secs_f32(frame.time)
     {
         state.current_time.real_offset = offset;
     }

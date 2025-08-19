@@ -26,6 +26,7 @@ pub use crate::{
 };
 pub use dod::Team;
 
+#[derive(Debug)]
 pub enum AnalyzerEvent<'a> {
     Initialization,
     Finalization,

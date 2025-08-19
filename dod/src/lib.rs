@@ -63,6 +63,7 @@ pub enum UserMessage {
     PTeam(PTeam),
     PlayersIn(PlayersIn),
     ReloadDone(ReloadDone),
+    ReqState(ReqState),
     ResetHUD(ResetHUD),
     ResetSens(ResetSens),
     RoundState(RoundState),
@@ -211,11 +212,16 @@ pub struct CancelProg {
     _unk2: u8,
 }
 
-/// Sent when an objective is captured by a player.
+/// Sent when an objective is captured by a player so that a message can be displayed to clients.
 #[derive(Debug)]
 pub struct CapMsg {
+    /// Client index of the player.
     pub client_index: u8,
+
+    /// Name of the objective captured.
     pub point_name: String,
+
+    /// Team associated with the player.
     pub team: Team,
 }
 
@@ -314,12 +320,12 @@ pub struct GameRules {
 }
 
 /// Sent when a player should play a hand signal animation.
-///
-/// - Length: 2
-/// - Value: (client_index, animation_id)?
 #[derive(Debug)]
 pub struct HandSignal {
+    /// Client index of the player.
     pub client_index: u8,
+
+    /// Animation sequence to play.
     pub animation_id: u8,
 }
 
@@ -335,7 +341,9 @@ pub struct Health(pub u8);
 /// - Length: 1
 /// - Value: 9 after YouDied; 0 otherwise
 #[derive(Debug)]
-pub struct HideWeapon {}
+pub struct HideWeapon {
+    flags: u8,
+}
 
 /// - Length: 2
 #[derive(Debug)]
@@ -441,14 +449,21 @@ pub struct PTeam {
     pub team: Team,
 }
 
-/// Sent when more players enter a capture area to rerender the HUD.
-///
-/// - Length: 4
+/// Sent when one or more players enter a capture area to rerender the HUD.
 #[derive(Debug)]
 pub struct PlayersIn {
-    pub area_index: u8,
+    /// Index of the objective that players are inside.
+    ///
+    /// Can be correlated to the index of an [Objective] sent in an [InitObj] message.
+    pub objective_index: u8,
+
+    /// Team that the players inside the objective are members of.
     pub team: Team,
+
+    /// Number of players that are in the objective area.
     pub players_inside_area: u8,
+
+    /// Number of players required to start capturing the objective.
     pub required_players_for_area: u8,
 }
 
@@ -462,6 +477,9 @@ pub struct ProgUpdate {
 #[derive(Debug)]
 pub struct ReloadDone {}
 
+#[derive(Debug)]
+pub struct ReqState {}
+
 /// Sent when the POV spawns to reset their HUD state for the new life.
 ///
 /// - Frequency: 1 on each spawn
@@ -473,20 +491,45 @@ pub struct ResetHUD {}
 #[derive(Debug)]
 pub struct ResetSens {}
 
-/// Sent when the round state changes, for example, when a team completes all objectives.
+/// Sent when the round state changes.
 #[derive(Debug)]
 pub enum RoundState {
+    /// Round is being initialized or reset.
+    ///
+    /// During a clan match, a [RoundState::Reset] will send players back to spawn and reinitialize
+    /// objective state. Players are frozen and unable to move in this state until transitioning
+    /// into [RoundState::Start].
     Reset = 0,
-    Normal = 1,
+
+    /// Round is starting.
+    ///
+    /// A [RoundState::Start] marks the end of freeze time that was initiated by a [RoundState::Reset],
+    /// allowing the players to move again.
+    Start = 1,
+
+    /// Allies team has won the round.
+    ///
+    /// This starts a brief post-round period before transitioning into [RoundState::Reset] and then
+    /// [RoundState::Start].
     AlliesWin = 3,
+
+    /// Axis team has won the round.
+    ///
+    /// This starts a brief post-round period before transitioning into [RoundState::Reset] and then
+    /// [RoundState::Start].
     AxisWin = 4,
+
+    /// Round time has expired with no winner.
     Draw = 5,
 }
 
 /// Sent when a player sends a message in chat.
 #[derive(Debug)]
 pub struct SayText {
+    /// Client index of the player that sent the message.
     pub client_index: u8,
+
+    /// Message sent by the player.
     pub text: String,
 }
 
@@ -630,7 +673,7 @@ pub struct TextMsg {
     pub arg4: Option<String>,
 }
 
-/// - Length: 2
+/// Sent in response to a `timeleft` command from the client.
 #[derive(Debug)]
 pub struct TimeLeft(pub Duration);
 
@@ -638,11 +681,13 @@ pub struct TimeLeft(pub Duration);
 #[derive(Debug)]
 pub struct TimerStatus {}
 
-/// - Length: 1
-/// - Value: 0 or 1
+/// Sent in response to a `use` command from the client.
 #[derive(Debug)]
 pub struct UseSound {
-    pub is_button_pressed: bool,
+    /// Indicates whether an entity is in range.
+    ///
+    /// When true, the client plays a different sound.
+    pub is_entity_in_sphere: bool,
 }
 
 /// Sent when the POV needs to render a VGUI menu?
@@ -667,8 +712,7 @@ pub struct WaveStatus(pub u8);
 #[derive(Debug)]
 pub struct WaveTime(pub Duration); // u8
 
-/// - Frequency: many on POV connection?
-/// - Length: varies
+/// Sent when the client should be updated with a list of known weapons.
 #[derive(Debug)]
 pub struct WeaponList {
     pub primary_ammo_id: u8,
@@ -677,7 +721,7 @@ pub struct WeaponList {
     pub secondary_ammo_max: u8,
     pub slot: u8,
     pub position_in_slot: u8,
-    pub weapon: Weapon,
+    pub weapon: Weapon, // possible u16?
     _unk1: u8,
     _unk2: u8,
     pub clip_size: u8,
@@ -809,10 +853,10 @@ fn weapon(i: &[u8]) -> IResult<&[u8], Weapon> {
 impl UserMessage {
     pub fn new<'a>(msg_name: &'a [u8], msg_data: &'a [u8]) -> Result<UserMessage, Error> {
         let msg_name = from_utf8(msg_name).map_err(|_| Error::ParserError)?;
-        let message_name = msg_name.trim_end_matches('\x00');
+        let msg_name = msg_name.trim_end_matches('\x00');
         let i = msg_data;
 
-        let (_, message) = match message_name {
+        let (_, message) = match msg_name {
             "AmmoX" => ammox.map(Self::AmmoX).parse(i),
             "BloodPuff" => blood_puff.map(Self::BloodPuff).parse(i),
             "CancelProg" => cancel_prog.map(Self::CancelProg).parse(i),
@@ -823,7 +867,9 @@ impl UserMessage {
             "CurWeapon" => cur_weapon.map(Self::CurWeapon).parse(i),
             "DeathMsg" => death_msg.map(Self::DeathMsg).parse(i),
             "Frags" => frags.map(Self::Frags).parse(i),
+            "GameRules" => game_rules.map(Self::GameRules).parse(i),
             "Health" => health.map(Self::Health).parse(i),
+            "HideWeapon" => hide_weapon.map(Self::HideWeapon).parse(i),
             "HudText" => hud_text.map(Self::HudText).parse(i),
             "InitHUD" => init_hud.map(Self::InitHUD).parse(i),
             "InitObj" => init_obj.map(Self::InitObj).parse(i),
@@ -834,12 +880,15 @@ impl UserMessage {
             "PTeam" => p_team.map(Self::PTeam).parse(i),
             "PlayersIn" => players_in.map(Self::PlayersIn).parse(i),
             "ReloadDone" => reload_done.map(Self::ReloadDone).parse(i),
+            "ReqState" => req_state.map(Self::ReqState).parse(i),
             "ResetHUD" => reset_hud.map(Self::ResetHUD).parse(i),
             "ResetSens" => reset_sens.map(Self::ResetSens).parse(i),
             "RoundState" => round_state.map(Self::RoundState).parse(i),
             "SayText" => say_text.map(Self::SayText).parse(i),
             "Scope" => scope.map(Self::Scope).parse(i),
             "ScoreShort" => score_short.map(Self::ScoreShort).parse(i),
+            "ScreenFade" => screen_fade.map(Self::ScreenFade).parse(i),
+            "ScreenShake" => screen_shake.map(Self::ScreenShake).parse(i),
             "ServerName" => server_name.map(Self::ServerName).parse(i),
             "SetFOV" => set_fov.map(Self::SetFOV).parse(i),
             "SetObj" => set_obj.map(Self::SetObj).parse(i),
@@ -850,6 +899,7 @@ impl UserMessage {
             "TextMsg" => text_msg.map(Self::TextMsg).parse(i),
             "TimeLeft" => time_left.map(Self::TimeLeft).parse(i),
             "UseSound" => use_sound.map(Self::UseSound).parse(i),
+            "VGUIMenu" => vgui_menu.map(Self::VGUIMenu).parse(i),
             "VoiceMask" => voice_mask.map(Self::VoiceMask).parse(i),
             "WaveStatus" => wave_status.map(Self::WaveStatus).parse(i),
             "WaveTime" => wave_time.map(Self::WaveTime).parse(i),
@@ -1001,8 +1051,18 @@ fn frags(i: &[u8]) -> IResult<&[u8], Frags> {
         .parse(i)
 }
 
+fn game_rules(i: &[u8]) -> IResult<&[u8], GameRules> {
+    (le_u8, le_u8)
+        .map(|(_unk1, _unk2)| GameRules { _unk1, _unk2 })
+        .parse_complete(i)
+}
+
 fn health(i: &[u8]) -> IResult<&[u8], Health> {
     all_consuming(le_u8).map(Health).parse(i)
+}
+
+fn hide_weapon(i: &[u8]) -> IResult<&[u8], HideWeapon> {
+    le_u8.map(|flags| HideWeapon { flags }).parse_complete(i)
 }
 
 fn hud_text(i: &[u8]) -> IResult<&[u8], HudText> {
@@ -1105,8 +1165,8 @@ fn p_team(i: &[u8]) -> IResult<&[u8], PTeam> {
 fn players_in(i: &[u8]) -> IResult<&[u8], PlayersIn> {
     all_consuming((le_u8, team, le_u8, le_u8))
         .map(
-            |(area_index, team, players_inside_area, required_players_for_area)| PlayersIn {
-                area_index,
+            |(objective_index, team, players_inside_area, required_players_for_area)| PlayersIn {
+                objective_index,
                 team,
                 players_inside_area,
                 required_players_for_area,
@@ -1117,6 +1177,10 @@ fn players_in(i: &[u8]) -> IResult<&[u8], PlayersIn> {
 
 fn reload_done(i: &[u8]) -> IResult<&[u8], ReloadDone> {
     eof.map(|_| ReloadDone {}).parse(i)
+}
+
+fn req_state(i: &[u8]) -> IResult<&[u8], ReqState> {
+    eof.map(|_| ReqState {}).parse(i)
 }
 
 fn reset_hud(i: &[u8]) -> IResult<&[u8], ResetHUD> {
@@ -1131,7 +1195,7 @@ fn round_state(i: &[u8]) -> IResult<&[u8], RoundState> {
     all_consuming(le_u8)
         .map_res(|team_id| match team_id {
             0 => Ok(RoundState::Reset),
-            1 => Ok(RoundState::Normal),
+            1 => Ok(RoundState::Start),
             3 => Ok(RoundState::AlliesWin),
             4 => Ok(RoundState::AxisWin),
             5 => Ok(RoundState::Draw),
@@ -1163,6 +1227,14 @@ fn score_short(i: &[u8]) -> IResult<&[u8], ScoreShort> {
             deaths,
         })
         .parse(i)
+}
+
+fn screen_fade(i: &[u8]) -> IResult<&[u8], ScreenFade> {
+    context("ScreenFade", fail()).parse(i)
+}
+
+fn screen_shake(i: &[u8]) -> IResult<&[u8], ScreenShake> {
+    context("ScreenShake", fail()).parse(i)
 }
 
 fn server_name(i: &[u8]) -> IResult<&[u8], ServerName> {
@@ -1243,8 +1315,14 @@ fn time_left(i: &[u8]) -> IResult<&[u8], TimeLeft> {
 
 fn use_sound(i: &[u8]) -> IResult<&[u8], UseSound> {
     all_consuming(le_u8.map(|v| v != 0))
-        .map(|is_button_pressed| UseSound { is_button_pressed })
+        .map(|is_entity_in_sphere| UseSound {
+            is_entity_in_sphere,
+        })
         .parse(i)
+}
+
+fn vgui_menu(i: &[u8]) -> IResult<&[u8], VGUIMenu> {
+    context("VGUIMenu", fail()).parse(i)
 }
 
 fn voice_mask(i: &[u8]) -> IResult<&[u8], VoiceMask> {

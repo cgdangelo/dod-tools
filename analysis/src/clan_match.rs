@@ -31,7 +31,7 @@ pub fn use_clan_match_detection_updates(
         // Players and teams are scoreless after a reset; we infer the match is live
         (
             ClanMatchDetection::WaitingForNormal { reset_time },
-            AnalyzerEvent::UserMessage(UserMessage::RoundState(RoundState::Normal)),
+            AnalyzerEvent::UserMessage(UserMessage::RoundState(RoundState::Start)),
         ) if state
             .players
             .iter()

@@ -23,14 +23,19 @@ pub enum Error {
 pub enum Version {
     V1_0,
     V1_1,
-    V1_1B,
-    V1_1C,
+    V1_1b,
+    V1_1c,
     V1_2,
     V1_3,
 }
 
+/// Kinds of messages registered by the mod.
 #[derive(Debug)]
 pub enum UserMessage {
+    #[deprecated(
+        note = "This is registered as a message, but never sent. The mod does not show anything on \
+        screen when a client picks up ammo."
+    )]
     AmmoPickup(AmmoPickup),
     AmmoShort(AmmoShort),
     AmmoX(AmmoX),
@@ -90,6 +95,10 @@ pub enum UserMessage {
     WaveStatus(WaveStatus),
     WaveTime(WaveTime),
     WeaponList(WeaponList),
+    #[deprecated(
+        note = "This is registered as a message, but never sent. The mod does not show anything on \
+        screen when a client picks up a weapon."
+    )]
     WeapPickup(WeapPickup),
     Weather(Weather),
     YouDied(YouDied),
@@ -180,19 +189,105 @@ pub enum Weapon {
     EnfieldBayonet = 43,
 }
 
-/// - Length: 2
+/// Ammunition used by a [Weapon].
+#[derive(Debug)]
+pub enum Ammo {
+    /// Ammo for submachine gun and light auto weapons.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::GreaseGun]
+    /// - [Weapon::Mp40]
+    /// - [Weapon::Sten]
+    /// - [Weapon::Thompson]
+    Smg = 1,
+
+    /// Ammo for secondary or tertiary rifle weapons.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::M1Carbine]
+    /// - [Weapon::M1A1Carbine]
+    /// - [Weapon::K43]
+    /// - [Weapon::Mg34]
+    AltRifle = 2,
+
+    /// Ammo for primary rifle and some sniper rifle weapons.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::Garand]
+    /// - [Weapon::LeeEnfield]
+    /// - [Weapon::K98]
+    /// - [Weapon::ScopedK98]
+    /// - [Weapon::ScopedLeeEnfield]
+    Rifle = 3,
+
+    /// Ammo for pistol sidearms.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::Luger]
+    /// - [Weapon::M1911]
+    /// - [Weapon::Webley]
+    Pistol = 4,
+
+    /// Ammo for [Weapon::Springfield].
+    Springfield = 5,
+
+    /// Ammo for heavy auto weapons.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::Bar]
+    /// - [Weapon::Bren]
+    /// - [Weapon::Fg42]
+    /// - [Weapon::ScopedFg42]
+    /// - [Weapon::Stg44]
+    Heavy = 6,
+
+    /// Ammo for [Weapon::Mg42].
+    Mg42 = 7,
+
+    /// Ammo for [Weapon::Browning30Cal].
+    Browning30Cal = 8,
+
+    /// Ammo for grenades.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::Mk2Grenade]
+    /// - [Weapon::MillsBomb]
+    /// - [Weapon::StickGrenade]
+    Grenade = 9,
+
+    /// Ammo for rocket launchers.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::Bazooka]
+    /// - [Weapon::Panzerschreck]
+    /// - [Weapon::Piat]
+    Rocket = 13,
+}
+
+/// Sent when the POV picks up ammo so the HUD can show an ammo icon.
 #[derive(Debug)]
 pub struct AmmoPickup {}
 
+/// Sent when the remaining ammo for the POV's current weapon has changed.
+///
+/// This is only used when the amount would overflow an [AmmoX] message.
 #[derive(Debug)]
 pub struct AmmoShort {
-    pub ammo_id: u8,
-    pub amount: i16,
+    pub ammo: Ammo,
+    pub amount: u16,
 }
 
+/// Sent when the remaining ammo for the POV's current weapon has changed.
 #[derive(Debug)]
 pub struct AmmoX {
-    pub ammo_id: u8,
+    pub ammo: Ammo,
     pub amount: u8,
 }
 
@@ -715,9 +810,9 @@ pub struct WaveTime(pub Duration); // u8
 /// Sent when the client should be updated with a list of known weapons.
 #[derive(Debug)]
 pub struct WeaponList {
-    pub primary_ammo_id: u8,
+    pub primary_ammo: Ammo,
     pub primary_ammo_max: u8,
-    pub secondary_ammo_id: u8,
+    pub secondary_ammo: Ammo,
     pub secondary_ammo_max: u8,
     pub slot: u8,
     pub position_in_slot: u8,
@@ -727,7 +822,7 @@ pub struct WeaponList {
     pub clip_size: u8,
 }
 
-/// - Length: 1
+/// Sent when the client picks up a weapon so the HUD can show a weapon icon.
 #[derive(Debug)]
 pub struct WeapPickup {}
 
@@ -850,6 +945,23 @@ fn weapon(i: &[u8]) -> IResult<&[u8], Weapon> {
         .parse(i)
 }
 
+fn ammo(i: &[u8]) -> IResult<&[u8], Ammo> {
+    all_consuming(le_u8)
+        .map_res(|value| match value {
+            1 => Ok(Ammo::Smg),
+            2 => Ok(Ammo::AltRifle),
+            3 => Ok(Ammo::Rifle),
+            4 => Ok(Ammo::Pistol),
+            5 => Ok(Ammo::Springfield),
+            6 => Ok(Ammo::Heavy),
+            7 => Ok(Ammo::Mg42),
+            8 => Ok(Ammo::Browning30Cal),
+            9 => Ok(Ammo::Rocket),
+            _ => Err(()),
+        })
+        .parse(i)
+}
+
 impl UserMessage {
     pub fn new<'a>(msg_name: &'a [u8], msg_data: &'a [u8]) -> Result<UserMessage, Error> {
         let msg_name = from_utf8(msg_name).map_err(|_| Error::ParserError)?;
@@ -857,6 +969,7 @@ impl UserMessage {
         let i = msg_data;
 
         let (_, message) = match msg_name {
+            "AmmoShort" => ammo_short.map(Self::AmmoShort).parse(i),
             "AmmoX" => ammox.map(Self::AmmoX).parse(i),
             "BloodPuff" => blood_puff.map(Self::BloodPuff).parse(i),
             "CancelProg" => cancel_prog.map(Self::CancelProg).parse(i),
@@ -926,9 +1039,15 @@ impl TryFrom<&str> for Team {
     }
 }
 
+fn ammo_short(i: &[u8]) -> IResult<&[u8], AmmoShort> {
+    all_consuming((ammo, le_u16))
+        .map(|(ammo, amount)| AmmoShort { ammo, amount })
+        .parse(i)
+}
+
 fn ammox(i: &[u8]) -> IResult<&[u8], AmmoX> {
-    all_consuming((le_u8, le_u8))
-        .map(|(ammo_id, amount)| AmmoX { ammo_id, amount })
+    all_consuming((ammo, le_u8))
+        .map(|(ammo, amount)| AmmoX { ammo, amount })
         .parse(i)
 }
 
@@ -1052,9 +1171,9 @@ fn frags(i: &[u8]) -> IResult<&[u8], Frags> {
 }
 
 fn game_rules(i: &[u8]) -> IResult<&[u8], GameRules> {
-    (le_u8, le_u8)
+    all_consuming((le_u8, le_u8))
         .map(|(_unk1, _unk2)| GameRules { _unk1, _unk2 })
-        .parse_complete(i)
+        .parse(i)
 }
 
 fn health(i: &[u8]) -> IResult<&[u8], Health> {
@@ -1062,7 +1181,7 @@ fn health(i: &[u8]) -> IResult<&[u8], Health> {
 }
 
 fn hide_weapon(i: &[u8]) -> IResult<&[u8], HideWeapon> {
-    le_u8.map(|flags| HideWeapon { flags }).parse_complete(i)
+    all_consuming(le_u8).map(|flags| HideWeapon { flags }).parse(i)
 }
 
 fn hud_text(i: &[u8]) -> IResult<&[u8], HudText> {
@@ -1350,13 +1469,13 @@ fn wave_time(i: &[u8]) -> IResult<&[u8], WaveTime> {
 
 fn weapon_list(i: &[u8]) -> IResult<&[u8], WeaponList> {
     all_consuming((
-        le_u8, le_u8, le_u8, le_u8, le_u8, le_u8, weapon, le_u8, le_u8, le_u8,
+        ammo, le_u8, ammo, le_u8, le_u8, le_u8, weapon, le_u8, le_u8, le_u8,
     ))
     .map(
         |(
-            primary_ammo_id,
+            primary_ammo,
             primary_ammo_max,
-            secondary_ammo_id,
+            secondary_ammo,
             secondary_ammo_max,
             slot,
             position_in_slot,
@@ -1366,9 +1485,9 @@ fn weapon_list(i: &[u8]) -> IResult<&[u8], WeaponList> {
             clip_size,
         )| {
             WeaponList {
-                primary_ammo_id,
+                primary_ammo,
                 primary_ammo_max,
-                secondary_ammo_id,
+                secondary_ammo,
                 secondary_ammo_max,
                 slot,
                 position_in_slot,

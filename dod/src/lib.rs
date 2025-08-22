@@ -12,6 +12,7 @@ use nom::{
     number::complete::{le_i8, le_i16, le_i32, le_u8, le_u16},
     sequence::terminated,
 };
+use std::convert::Infallible;
 use std::str::from_utf8;
 use std::time::Duration;
 
@@ -192,6 +193,16 @@ pub enum Weapon {
 /// Ammunition used by a [Weapon].
 #[derive(Debug)]
 pub enum Ammo {
+    Unknown,
+
+    /// Ammo for melee weapons or weapons with infinite ammo.
+    ///
+    /// Used by:
+    ///
+    /// - [Weapon::GermanKnife]
+    /// - [Weapon::Kabar]
+    Infinite,
+
     /// Ammo for submachine gun and light auto weapons.
     ///
     /// Used by:
@@ -200,7 +211,7 @@ pub enum Ammo {
     /// - [Weapon::Mp40]
     /// - [Weapon::Sten]
     /// - [Weapon::Thompson]
-    Smg = 1,
+    Smg,
 
     /// Ammo for secondary or tertiary rifle weapons.
     ///
@@ -210,7 +221,7 @@ pub enum Ammo {
     /// - [Weapon::M1A1Carbine]
     /// - [Weapon::K43]
     /// - [Weapon::Mg34]
-    AltRifle = 2,
+    AltRifle,
 
     /// Ammo for primary rifle and some sniper rifle weapons.
     ///
@@ -221,7 +232,7 @@ pub enum Ammo {
     /// - [Weapon::K98]
     /// - [Weapon::ScopedK98]
     /// - [Weapon::ScopedLeeEnfield]
-    Rifle = 3,
+    Rifle,
 
     /// Ammo for pistol sidearms.
     ///
@@ -230,10 +241,10 @@ pub enum Ammo {
     /// - [Weapon::Luger]
     /// - [Weapon::M1911]
     /// - [Weapon::Webley]
-    Pistol = 4,
+    Pistol,
 
     /// Ammo for [Weapon::Springfield].
-    Springfield = 5,
+    Springfield,
 
     /// Ammo for heavy auto weapons.
     ///
@@ -244,13 +255,13 @@ pub enum Ammo {
     /// - [Weapon::Fg42]
     /// - [Weapon::ScopedFg42]
     /// - [Weapon::Stg44]
-    Heavy = 6,
+    Heavy,
 
     /// Ammo for [Weapon::Mg42].
-    Mg42 = 7,
+    Mg42,
 
     /// Ammo for [Weapon::Browning30Cal].
-    Browning30Cal = 8,
+    Browning30Cal,
 
     /// Ammo for grenades.
     ///
@@ -259,7 +270,7 @@ pub enum Ammo {
     /// - [Weapon::Mk2Grenade]
     /// - [Weapon::MillsBomb]
     /// - [Weapon::StickGrenade]
-    Grenade = 9,
+    Grenade,
 
     /// Ammo for rocket launchers.
     ///
@@ -268,7 +279,7 @@ pub enum Ammo {
     /// - [Weapon::Bazooka]
     /// - [Weapon::Panzerschreck]
     /// - [Weapon::Piat]
-    Rocket = 13,
+    Rocket,
 }
 
 /// Sent when the POV picks up ammo so the HUD can show an ammo icon.
@@ -549,8 +560,8 @@ pub struct PTeam {
 pub struct PlayersIn {
     /// Index of the objective that players are inside.
     ///
-    /// Can be correlated to the index of an [Objective] sent in an [InitObj] message.
-    pub objective_index: u8,
+    /// Can be correlated to the area index of an [Objective] sent in an [InitObj] message.
+    pub area_index: u8,
 
     /// Team that the players inside the objective are members of.
     pub team: Team,
@@ -559,7 +570,7 @@ pub struct PlayersIn {
     pub players_inside_area: u8,
 
     /// Number of players required to start capturing the objective.
-    pub required_players_for_area: u8,
+    pub required_players_to_capture: u8,
 }
 
 /// - Length: 3
@@ -946,9 +957,9 @@ fn weapon(i: &[u8]) -> IResult<&[u8], Weapon> {
 }
 
 fn ammo(i: &[u8]) -> IResult<&[u8], Ammo> {
-    all_consuming(le_u8)
+    le_u8
         .map_res(|value| match value {
-            1 => Ok(Ammo::Smg),
+            1 => Ok::<Ammo, Infallible>(Ammo::Smg),
             2 => Ok(Ammo::AltRifle),
             3 => Ok(Ammo::Rifle),
             4 => Ok(Ammo::Pistol),
@@ -957,7 +968,8 @@ fn ammo(i: &[u8]) -> IResult<&[u8], Ammo> {
             7 => Ok(Ammo::Mg42),
             8 => Ok(Ammo::Browning30Cal),
             9 => Ok(Ammo::Rocket),
-            _ => Err(()),
+            u8::MAX => Ok(Ammo::Infinite),
+            _ => Ok(Ammo::Unknown),
         })
         .parse(i)
 }
@@ -1121,22 +1133,6 @@ fn client_areas(i: &[u8]) -> IResult<&[u8], ClientAreas> {
             hud_icon,
         },
     ))
-
-    // (le_u8, le_u8.and_then(|a| success(a)))
-    //     .map(|_| ClientAreas {
-    //         icon_index: 0,
-    //         _unk2: 0,
-    //         hud_icon: "".to_string(),
-    //     })
-    //     .parse(i)
-
-    // (le_u8, le_u8, null_string, le_u8)
-    //     .map(|(icon_index, _unk2, hud_icon, _)| ClientAreas {
-    //         icon_index,
-    //         _unk2,
-    //         hud_icon,
-    //     })
-    //     .parse(i)
 }
 
 fn cur_weapon(i: &[u8]) -> IResult<&[u8], CurWeapon> {
@@ -1181,7 +1177,9 @@ fn health(i: &[u8]) -> IResult<&[u8], Health> {
 }
 
 fn hide_weapon(i: &[u8]) -> IResult<&[u8], HideWeapon> {
-    all_consuming(le_u8).map(|flags| HideWeapon { flags }).parse(i)
+    all_consuming(le_u8)
+        .map(|flags| HideWeapon { flags })
+        .parse(i)
 }
 
 fn hud_text(i: &[u8]) -> IResult<&[u8], HudText> {
@@ -1284,11 +1282,11 @@ fn p_team(i: &[u8]) -> IResult<&[u8], PTeam> {
 fn players_in(i: &[u8]) -> IResult<&[u8], PlayersIn> {
     all_consuming((le_u8, team, le_u8, le_u8))
         .map(
-            |(objective_index, team, players_inside_area, required_players_for_area)| PlayersIn {
-                objective_index,
+            |(area_index, team, players_inside_area, required_players_to_capture)| PlayersIn {
+                area_index,
                 team,
                 players_inside_area,
-                required_players_for_area,
+                required_players_to_capture,
             },
         )
         .parse(i)

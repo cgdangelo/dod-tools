@@ -4,6 +4,7 @@
 
 use analysis::{Analysis, Player, PlayerGlobalId, Round, SteamId, Team};
 
+use clap::Parser;
 use egui::{
     Align, CentralPanel, CollapsingHeader, Color32, Context, Frame, Grid, Label, Layout,
     ProgressBar, ScrollArea, SidePanel, Sides, TopBottomPanel, Ui, Window, panel::Side,
@@ -19,6 +20,11 @@ use std::str::FromStr;
 use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
+#[derive(Debug, Parser)]
+struct Args {
+    demo_paths: Vec<PathBuf>,
+}
+
 #[tokio::main]
 async fn main() {
     let options = eframe::NativeOptions {
@@ -29,7 +35,11 @@ async fn main() {
     eframe::run_native(
         "dod-tools",
         options,
-        Box::new(|_cc| Ok(Box::<Gui>::default())),
+        Box::new(|_cc| {
+            Ok(Box::new(
+                Gui::default().with_initial_files(Args::parse().demo_paths),
+            ))
+        }),
     )
     .expect("Could not run the GUI");
 }
@@ -38,6 +48,7 @@ struct Gui {
     analyses: Vec<(FileInfo, Analysis)>,
     batch_progress: Option<(usize, usize)>,
     file_picker: FileDialog,
+    initial_files: Vec<PathBuf>,
     open_windows: HashSet<String>,
     player_highlight: PlayerHighlighting,
 
@@ -64,6 +75,13 @@ enum GuiMessage {
     },
 }
 
+impl Gui {
+    fn with_initial_files(mut self, files: Vec<PathBuf>) -> Self {
+        self.initial_files = files;
+        self
+    }
+}
+
 impl Default for Gui {
     fn default() -> Self {
         let (tx, rx) = mpsc::channel();
@@ -78,6 +96,7 @@ impl Default for Gui {
                 )
                 .default_file_filter("Demo files (*.dem)"),
 
+            initial_files: Default::default(),
             player_highlight: Default::default(),
             open_windows: Default::default(),
             analyses: Default::default(),
@@ -110,6 +129,12 @@ impl eframe::App for Gui {
                 self.analyses.push((file_info, *analysis));
             }
             _ => {}
+        }
+
+        if !self.initial_files.is_empty() {
+            analyze_files_async(ctx.clone(), self.tx.clone(), self.initial_files.clone());
+
+            self.initial_files.clear();
         }
 
         self.file_picker.update(ctx);

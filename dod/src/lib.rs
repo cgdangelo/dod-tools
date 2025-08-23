@@ -376,11 +376,21 @@ pub struct CurMarker {
     pub marker_id: u8,
 }
 
-/// - Length: 3
+/// Sent when the state of a [Weapon] changes.
 #[derive(Debug)]
 pub struct CurWeapon {
+    /// Indicates whether the weapon is actively selected.
+    ///
+    /// Selecting a different weapon emits 2 [CurWeapon] for the previous and next weapons, with
+    /// `is_active` set to `false` and `true` respectively.
     pub is_active: bool,
+
+    /// A [Weapon] initialized by a [WeaponList].
     pub weapon: Weapon,
+
+    /// Amount of [Ammo] remaining.
+    ///
+    /// Firing the current [Weapon] emits a [CurWeapon] for each bullet.
     pub clip_ammo: u8,
 }
 
@@ -451,9 +461,11 @@ pub struct HideWeapon {
     flags: u8,
 }
 
-/// - Length: 2
 #[derive(Debug)]
-pub struct Hltv {}
+pub struct Hltv {
+    client_id: u8,
+    flags: u8,
+}
 
 #[derive(Debug)]
 pub struct HudText {
@@ -695,24 +707,19 @@ pub struct ScreenFade {
     color: (u8, u8, u8, u8),
 }
 
-/// Sent when the POV should render a screen shake animation, such as after a grenade
-/// explosion.
-///
-/// - Length: 6
+/// Sent when the POV should render a screen shake animation, such as after a grenade explosion.
 #[derive(Debug)]
 pub struct ScreenShake {
     amplitude: u16,
-    duration: u16,
+    duration: Duration,
     frequency: u16,
 }
 
-/// Sent when the POV connects to a server.
-///
-/// - Length: variable
+/// Sent when the client connects to a server.
 #[derive(Debug)]
 pub struct ServerName(pub String);
 
-/// - Length: 1
+/// Sent when the POV's field of view changes.
 #[derive(Debug)]
 pub struct SetFOV(pub u8);
 
@@ -993,8 +1000,10 @@ impl UserMessage {
             "DeathMsg" => death_msg.map(Self::DeathMsg).parse(i),
             "Frags" => frags.map(Self::Frags).parse(i),
             "GameRules" => game_rules.map(Self::GameRules).parse(i),
+            "HandSignal" => hand_signal.map(Self::HandSignal).parse(i),
             "Health" => health.map(Self::Health).parse(i),
             "HideWeapon" => hide_weapon.map(Self::HideWeapon).parse(i),
+            "HLTV" => hltv.map(Self::Hltv).parse(i),
             "HudText" => hud_text.map(Self::HudText).parse(i),
             "InitHUD" => init_hud.map(Self::InitHUD).parse(i),
             "InitObj" => init_obj.map(Self::InitObj).parse(i),
@@ -1172,6 +1181,15 @@ fn game_rules(i: &[u8]) -> IResult<&[u8], GameRules> {
         .parse(i)
 }
 
+fn hand_signal(i: &[u8]) -> IResult<&[u8], HandSignal> {
+    all_consuming((le_u8, le_u8))
+        .map(|(client_index, animation_id)| HandSignal {
+            client_index,
+            animation_id,
+        })
+        .parse(i)
+}
+
 fn health(i: &[u8]) -> IResult<&[u8], Health> {
     all_consuming(le_u8).map(Health).parse(i)
 }
@@ -1179,6 +1197,15 @@ fn health(i: &[u8]) -> IResult<&[u8], Health> {
 fn hide_weapon(i: &[u8]) -> IResult<&[u8], HideWeapon> {
     all_consuming(le_u8)
         .map(|flags| HideWeapon { flags })
+        .parse(i)
+}
+
+fn hltv(i: &[u8]) -> IResult<&[u8], Hltv> {
+    all_consuming((le_u8, le_u8))
+        .map(|(_unk1, _unk2)| Hltv {
+            client_id: _unk1,
+            flags: _unk2,
+        })
         .parse(i)
 }
 
@@ -1351,7 +1378,19 @@ fn screen_fade(i: &[u8]) -> IResult<&[u8], ScreenFade> {
 }
 
 fn screen_shake(i: &[u8]) -> IResult<&[u8], ScreenShake> {
-    context("ScreenShake", fail()).parse(i)
+    all_consuming((
+        le_u16.map(|a| a / 4096),
+        le_u16
+            .map(|a| a as f32 / 4096.)
+            .map(Duration::from_secs_f32),
+        le_u16.map(|a| a / 4096),
+    ))
+    .map(|(amplitude, duration, frequency)| ScreenShake {
+        amplitude,
+        duration,
+        frequency,
+    })
+    .parse(i)
 }
 
 fn server_name(i: &[u8]) -> IResult<&[u8], ServerName> {

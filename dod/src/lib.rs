@@ -591,7 +591,13 @@ pub struct ProgUpdate {
     pub team: Team,
 }
 
-/// - Length: 0
+/// Sent when the POV has completed a reload.
+///
+/// Reloading a weapon will emit:
+///
+/// - [ReloadDone] to indicate that the reload animation has finished
+/// - [AmmoX] to indicate how many bullets the player has left
+/// - [CurWeapon] to indicate the new size of the current clip
 #[derive(Debug)]
 pub struct ReloadDone {}
 
@@ -699,11 +705,12 @@ pub struct ScoreShort {
     pub deaths: i16,
 }
 
+/// Sent when the screen should fade to a color.
 #[derive(Debug)]
 pub struct ScreenFade {
-    duration: u16,
-    hold_time: u16,
-    flags: i16,
+    duration: u16,  // Sometimes in 1<<12, usually not
+    hold_time: u16, // Sometimes in 1<<12, usually not
+    flags: u16,
     color: (u8, u8, u8, u8),
 }
 
@@ -746,8 +753,6 @@ pub struct Spectator {
 }
 
 /// Sent when objective capture progress has started.
-///
-/// - Length: 4
 #[derive(Debug)]
 pub struct StartProg {
     pub area_index: u8,
@@ -1374,7 +1379,14 @@ fn score_short(i: &[u8]) -> IResult<&[u8], ScoreShort> {
 }
 
 fn screen_fade(i: &[u8]) -> IResult<&[u8], ScreenFade> {
-    context("ScreenFade", fail()).parse(i)
+    all_consuming((le_u16, le_u16, le_u16, (le_u8, le_u8, le_u8, le_u8)))
+        .map(|(duration, hold_time, flags, (r, g, b, a))| ScreenFade {
+            duration,
+            hold_time,
+            flags,
+            color: (r, g, b, a),
+        })
+        .parse(i)
 }
 
 fn screen_shake(i: &[u8]) -> IResult<&[u8], ScreenShake> {

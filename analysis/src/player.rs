@@ -17,7 +17,7 @@ impl Display for PlayerGlobalId {
 #[derive(Debug)]
 pub struct Player {
     pub id: PlayerGlobalId,
-    pub connection_status: ConnectionStatus,
+    pub connection: Connection,
     pub name: String,
     pub team: Option<Team>,
     pub class: Option<Class>,
@@ -43,7 +43,7 @@ impl Eq for Player {}
 impl Player {
     fn new(id: PlayerGlobalId) -> Self {
         Self {
-            connection_status: ConnectionStatus::Disconnected,
+            connection: Connection::Disconnected,
             name: String::new(),
             id,
             team: None,
@@ -54,8 +54,8 @@ impl Player {
         }
     }
 
-    fn with_connection_status(&mut self, connection_status: ConnectionStatus) -> &mut Self {
-        self.connection_status = connection_status;
+    fn with_connection(&mut self, connection: Connection) -> &mut Self {
+        self.connection = connection;
         self
     }
 
@@ -99,7 +99,7 @@ impl TryFrom<&PlayerGlobalId> for SteamId {
 
 /// Represents whether a [Player] is connected to the server.
 #[derive(Debug)]
-pub enum ConnectionStatus {
+pub enum Connection {
     /// Player is currently connected to the server.
     Connected {
         /// Identifier assigned by the server that represents the [Player]'s connection.
@@ -136,7 +136,7 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
             let player = state.find_player_by_client_index_mut(svc_update_user_info.index);
 
             if let Some(disconnected_player) = player {
-                disconnected_player.connection_status = ConnectionStatus::Disconnected;
+                disconnected_player.connection = Connection::Disconnected;
                 return;
             }
         }
@@ -186,13 +186,13 @@ pub fn use_player_updates(state: &mut AnalyzerState, event: &AnalyzerEvent) {
         if let Some(player_in_slot) =
             state.find_player_by_client_index_mut(svc_update_user_info.index)
         {
-            player_in_slot.with_connection_status(ConnectionStatus::Disconnected);
+            player_in_slot.with_connection(Connection::Disconnected);
         }
 
         // Find the player from the message, and assign it to the slot
         if let Some(player) = state.find_player_by_id_mut(&id) {
             player
-                .with_connection_status(ConnectionStatus::Connected {
+                .with_connection(Connection::Connected {
                     client_id: svc_update_user_info.index,
                 })
                 .with_name(player_name)

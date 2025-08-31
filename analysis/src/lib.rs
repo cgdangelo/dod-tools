@@ -21,7 +21,7 @@ use dod::UserMessage;
 use std::time::Duration;
 
 pub use crate::{
-    player::{ConnectionStatus, Player, PlayerGlobalId, SteamId},
+    player::{Connection, Player, PlayerGlobalId, SteamId},
     round::Round,
 };
 pub use dod::Team;
@@ -146,19 +146,17 @@ impl<'a> From<&'a [u8]> for Analysis {
 
 impl AnalyzerState {
     fn find_player_by_client_index(&self, client_index: u8) -> Option<&Player> {
-        self.players
-            .iter()
-            .find(|player| match player.connection_status {
-                ConnectionStatus::Connected { client_id } => client_id == client_index,
-                _ => false,
-            })
+        self.players.iter().find(|player| match player.connection {
+            Connection::Connected { client_id } => client_id == client_index,
+            _ => false,
+        })
     }
 
     fn find_player_by_client_index_mut(&mut self, client_index: u8) -> Option<&mut Player> {
         self.players
             .iter_mut()
-            .find(|player| match player.connection_status {
-                ConnectionStatus::Connected { client_id } => client_id == client_index,
+            .find(|player| match player.connection {
+                Connection::Connected { client_id } => client_id == client_index,
                 _ => false,
             })
     }

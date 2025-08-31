@@ -1,3 +1,4 @@
+use crate::mortality::{Mortality, MortalityChange};
 use crate::{AnalyzerEvent, AnalyzerState, round::Round, time::GameTime};
 use dod::{RoundState, Team, UserMessage};
 use std::time::Duration;
@@ -50,8 +51,13 @@ pub fn use_clan_match_detection_updates(
 
             for player in state.players.iter_mut() {
                 player.kill_streaks.clear();
-                player.mortality.clear();
                 player.weapon_breakdown.clear();
+
+                player.mortality.clear();
+                player.mortality.push(MortalityChange::new(
+                    state.current_time.clone(),
+                    Mortality::Alive,
+                ));
             }
 
             state.clan_match_detection = ClanMatchDetection::MatchIsLive;

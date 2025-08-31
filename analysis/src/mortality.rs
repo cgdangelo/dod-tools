@@ -1,4 +1,4 @@
-use crate::{AnalyzerEvent, AnalyzerState, Player, time::GameTime};
+use crate::{time::GameTime, AnalyzerEvent, AnalyzerState, Player};
 use dod::UserMessage;
 
 /// Represents whether something is alive.
@@ -9,6 +9,13 @@ pub enum Mortality {
 }
 
 pub trait MortalityState {
+    /// Returns true if the object is alive.
+    fn is_alive(&self) -> bool {
+        self.mortality()
+            .map(|mortality| matches!(mortality, Mortality::Alive))
+            .unwrap_or(false)
+    }
+
     /// Returns true if the object is dead.
     fn is_dead(&self) -> bool {
         self.mortality()
@@ -28,6 +35,10 @@ pub trait MortalityState {
 pub struct MortalityChange(GameTime, Mortality);
 
 impl MortalityChange {
+    pub fn new(time: GameTime, mortality: Mortality) -> Self {
+        Self(time, mortality)
+    }
+
     pub fn time(&self) -> &GameTime {
         &self.0
     }
@@ -51,6 +62,20 @@ impl MortalityState for Player {
 }
 
 pub fn with_mortality_detection(state: &mut AnalyzerState, event: &AnalyzerEvent) {
+    if let AnalyzerEvent::Finalization = event {
+        state.players.iter_mut().for_each(|player| {
+            // Alive players need to be killed to get their final lifespans
+            if player.is_alive() {
+                player.mortality_changed(MortalityChange::new(
+                    state.current_time.clone(),
+                    Mortality::Dead,
+                ));
+            }
+        });
+
+        return;
+    };
+
     let mortality_change = match event {
         AnalyzerEvent::UserMessage(UserMessage::DeathMsg(death_msg)) => {
             Some((death_msg.victim_client_index - 1, Mortality::Dead))

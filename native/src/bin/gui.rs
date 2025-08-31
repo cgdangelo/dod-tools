@@ -2,7 +2,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use analysis::{Analysis, Player, PlayerGlobalId, Round, SteamId, Team};
+use analysis::{Analysis, MortalityState, Player, PlayerGlobalId, Round, SteamId, Team};
 
 use clap::Parser;
 use egui::{
@@ -367,20 +367,30 @@ fn scoreboard_ui(r: &Analysis, player_highlighting: &mut PlayerHighlighting, ui:
     CollapsingHeader::new(format!("Scoreboard: {match_result_fragment}"))
         .default_open(true)
         .show(ui, |ui| {
+            let columns = [
+                "",
+                "ID",
+                "Name",
+                "Team",
+                "Class",
+                "Score",
+                "Kills",
+                "Deaths",
+                "Avg. Life",
+                "Min. Life",
+                "Max. Life",
+            ];
+
             let table = TableBuilder::new(ui)
                 .striped(true)
                 .cell_layout(Layout::left_to_right(Align::Center))
                 .max_scroll_height(260.)
                 .column(Column::auto())
                 .column(Column::auto_with_initial_suggestion(150.))
-                .columns(Column::auto(), 6);
+                .columns(Column::auto(), columns.len());
 
             table
                 .header(TABLE_ROW_HEIGHT, |mut header| {
-                    let columns = [
-                        "", "ID", "Name", "Team", "Class", "Score", "Kills", "Deaths",
-                    ];
-
                     for column in columns {
                         header.col(|ui| {
                             ui.strong(column);
@@ -463,6 +473,18 @@ fn scoreboard_row_ui(
 
         row.col(|ui| {
             ui.label(p.stats.2.to_string());
+        });
+
+        row.col(|ui| {
+            ui.label(format!("{}s", p.avg_lifespan().as_secs()));
+        });
+
+        row.col(|ui| {
+            ui.label(format!("{}s", p.min_lifespan().as_secs()));
+        });
+
+        row.col(|ui| {
+            ui.label(format!("{}s", p.max_lifespan().as_secs()));
         });
     });
 }

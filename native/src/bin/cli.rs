@@ -1,6 +1,6 @@
 //! Demo analyzer that runs in a terminal and produces text output.
 
-use analysis::{Analysis, Round, SteamId, Team};
+use analysis::{Analysis, MortalityState, Round, SteamId, Team};
 use clap::{Parser, ValueEnum};
 use humantime::{format_duration, format_rfc3339_seconds};
 use native::{FileInfo, run_analyzer};
@@ -70,6 +70,11 @@ impl FromIterator<AnalyzerOutput> for Json {
                         "score": player.stats.0,
                         "kills": player.stats.1,
                         "deaths": player.stats.2,
+                        "lifespan": json!({
+                            "avg": format_duration(player.avg_lifespan()).to_string(),
+                            "min": format_duration(player.min_lifespan()).to_string(),
+                            "max": format_duration(player.max_lifespan()).to_string(),
+                        })
                     })
                 })
                 .collect::<Vec<_>>();
@@ -151,7 +156,18 @@ impl Display for Markdown {
         // Player scoreboard section
         {
             let mut table_builder = Builder::default();
-            table_builder.push_record(["ID", "Name", "Team", "Class", "Score", "Kills", "Deaths"]);
+            table_builder.push_record([
+                "ID",
+                "Name",
+                "Team",
+                "Class",
+                "Score",
+                "Kills",
+                "Deaths",
+                "Avg. Life",
+                "Min. Life",
+                "Max. Life",
+            ]);
 
             for player in &self.1.state.players {
                 table_builder.push_record([
@@ -171,6 +187,9 @@ impl Display for Markdown {
                     player.stats.0.to_string(),
                     player.stats.1.to_string(),
                     player.stats.2.to_string(),
+                    format_duration(player.avg_lifespan()).to_string(),
+                    format_duration(player.min_lifespan()).to_string(),
+                    format_duration(player.max_lifespan()).to_string(),
                 ]);
             }
 

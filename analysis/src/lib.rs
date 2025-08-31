@@ -1,5 +1,6 @@
 mod clan_match;
 mod kill;
+mod mortality;
 mod player;
 mod round;
 mod scoreboard;
@@ -8,6 +9,7 @@ mod time;
 use crate::{
     clan_match::{ClanMatchDetection, use_clan_match_detection_updates},
     kill::{use_kill_streak_updates, use_weapon_breakdown_updates},
+    mortality::with_mortality_detection,
     player::use_player_updates,
     round::use_rounds_updates,
     scoreboard::{TeamScores, use_scoreboard_updates, use_team_score_updates},
@@ -130,6 +132,7 @@ impl<'a> From<&'a [u8]> for Analysis {
         let state = events.fold(AnalyzerState::default(), |mut state, ref event| {
             use_timing_updates(&mut state, event);
             use_player_updates(&mut state, event);
+            with_mortality_detection(&mut state, event);
             use_scoreboard_updates(&mut state, event);
             use_kill_streak_updates(&mut state, event);
             use_weapon_breakdown_updates(&mut state, event);

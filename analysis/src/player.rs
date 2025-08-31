@@ -1,4 +1,4 @@
-use crate::{AnalyzerEvent, AnalyzerState, kill::KillStreak};
+use crate::{AnalyzerEvent, AnalyzerState, kill::KillStreak, mortality::MortalityChange};
 use dem::types::EngineMessage;
 use dod::{Class, Team, Weapon};
 use std::collections::HashMap;
@@ -24,6 +24,7 @@ pub struct Player {
     pub stats: (i32, i32, i32),
     pub kill_streaks: Vec<KillStreak>,
     pub weapon_breakdown: HashMap<Weapon, (u32, u32)>,
+    pub mortality: Vec<MortalityChange>,
 }
 
 impl Hash for Player {
@@ -51,6 +52,7 @@ impl Player {
             stats: (0, 0, 0),
             kill_streaks: vec![],
             weapon_breakdown: HashMap::new(),
+            mortality: vec![],
         }
     }
 

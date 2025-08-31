@@ -50,6 +50,7 @@ pub fn use_clan_match_detection_updates(
 
             for player in state.players.iter_mut() {
                 player.kill_streaks.clear();
+                player.mortality.clear();
                 player.weapon_breakdown.clear();
             }
 

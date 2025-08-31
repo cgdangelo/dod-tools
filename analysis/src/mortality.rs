@@ -1,5 +1,6 @@
 use crate::{AnalyzerEvent, AnalyzerState, Player, time::GameTime};
 use dod::UserMessage;
+use std::time::Duration;
 
 /// Represents whether something is alive.
 #[derive(Debug, PartialEq)]
@@ -34,6 +35,43 @@ pub trait MortalityState {
         self.mortality_changes()
             .last()
             .map(|change| change.mortality())
+    }
+
+    fn avg_lifespan(&self) -> Duration {
+        #[derive(Default)]
+        struct State<'a> {
+            spawn_time: Option<&'a GameTime>,
+            total_lifespan: Duration,
+            num_spawns: usize,
+        }
+
+        let agg_state = self
+            .mortality_changes()
+            .fold(State::default(), |mut state, change| {
+                match change.mortality() {
+                    Mortality::Alive => {
+                        if state.spawn_time.is_none() {
+                            state.spawn_time = Some(change.time());
+                            state.num_spawns += 1;
+                        }
+                    }
+
+                    Mortality::Dead => {
+                        if let Some(spawn_time) = state.spawn_time {
+                            state.total_lifespan += change.time() - spawn_time;
+                            state.spawn_time = None;
+                        };
+                    }
+                };
+
+                state
+            });
+
+        if agg_state.total_lifespan.is_zero() || agg_state.num_spawns == 0 {
+            return Duration::ZERO;
+        }
+
+        agg_state.total_lifespan / agg_state.num_spawns as u32
     }
 }
 

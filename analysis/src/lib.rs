@@ -23,6 +23,7 @@ use dod::UserMessage;
 use std::time::Duration;
 
 pub use crate::{
+    mortality::MortalityState,
     player::{Connection, Player, PlayerGlobalId, SteamId},
     round::Round,
 };

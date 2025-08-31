@@ -1,4 +1,4 @@
-use crate::{time::GameTime, AnalyzerEvent, AnalyzerState, Player};
+use crate::{AnalyzerEvent, AnalyzerState, Player, time::GameTime};
 use dod::UserMessage;
 
 /// Represents whether something is alive.
@@ -9,6 +9,12 @@ pub enum Mortality {
 }
 
 pub trait MortalityState {
+    /// Invoked when the [Mortality] state has changed.
+    fn mortality_changed(&mut self, change: MortalityChange);
+
+    /// Returns a history of when the [Mortality] state has changed.
+    fn mortality_changes(&self) -> impl Iterator<Item = &MortalityChange>;
+
     /// Returns true if the object is alive.
     fn is_alive(&self) -> bool {
         self.mortality()
@@ -24,10 +30,11 @@ pub trait MortalityState {
     }
 
     /// Returns the current [Mortality] state.
-    fn mortality(&self) -> Option<&Mortality>;
-
-    /// Invoked when the [Mortality] state has changed.
-    fn mortality_changed(&mut self, change: MortalityChange);
+    fn mortality(&self) -> Option<&Mortality> {
+        self.mortality_changes()
+            .last()
+            .map(|change| change.mortality())
+    }
 }
 
 /// Timed event when an object's [Mortality] has changed.
@@ -49,15 +56,12 @@ impl MortalityChange {
 }
 
 impl MortalityState for Player {
-    fn mortality(&self) -> Option<&Mortality> {
-        self.mortality
-            .iter()
-            .last()
-            .map(|change| change.mortality())
-    }
-
     fn mortality_changed(&mut self, change: MortalityChange) {
         self.mortality.push(change);
+    }
+
+    fn mortality_changes(&self) -> impl Iterator<Item = &MortalityChange> {
+        self.mortality.iter()
     }
 }
 

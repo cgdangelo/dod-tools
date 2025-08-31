@@ -1,4 +1,4 @@
-use crate::{AnalyzerEvent, AnalyzerState, time::GameTime};
+use crate::{AnalyzerEvent, AnalyzerState, mortality::MortalityState, time::GameTime};
 use dod::{RoundState, UserMessage, Weapon};
 
 #[derive(Debug, Default)]
@@ -36,10 +36,16 @@ pub fn use_kill_streak_updates(state: &mut AnalyzerState, event: &AnalyzerEvent)
                 killer.kill_streaks.push(KillStreak::default());
             }
 
-            if let Some(killer_current_streak) = killer.kill_streaks.iter_mut().last() {
-                killer_current_streak
-                    .kills
-                    .push((current_time, death_msg.weapon.clone()));
+            let streak = if killer.is_dead() && death_msg.weapon.is_grenade() {
+                let prev_streak_index = killer.kill_streaks.len() - 2;
+
+                killer.kill_streaks.get_mut(prev_streak_index)
+            } else {
+                killer.kill_streaks.iter_mut().last()
+            };
+
+            if let Some(streak) = streak {
+                streak.kills.push((current_time, death_msg.weapon.clone()));
             }
         }
     } else if let AnalyzerEvent::UserMessage(UserMessage::RoundState(RoundState::Reset)) = event {

@@ -190,6 +190,15 @@ pub enum Weapon {
     EnfieldBayonet = 43,
 }
 
+impl Weapon {
+    pub fn is_grenade(&self) -> bool {
+        matches!(
+            self,
+            Self::MillsBomb | Self::Mk2Grenade | Self::StickGrenade
+        )
+    }
+}
+
 /// Ammunition used by a [Weapon].
 #[derive(Debug)]
 pub enum Ammo {

@@ -1,39 +1,53 @@
-use crate::time::GameTime;
-use crate::{AnalyzerEvent, AnalyzerState, Player};
+use crate::{AnalyzerEvent, AnalyzerState, Player, time::GameTime};
 use dod::UserMessage;
 
-trait MortalityState {
-    fn is_dead(&self) -> bool;
-
-    fn mortality(&self) -> Option<&Mortality>;
-
-    fn mortality_changed(&mut self, change: MortalityChange);
+/// Represents whether something is alive.
+#[derive(Debug, PartialEq)]
+pub enum Mortality {
+    Alive,
+    Dead,
 }
 
-#[derive(Debug)]
-pub struct MortalityChange(GameTime, Mortality);
-
-impl MortalityState for Player {
+pub trait MortalityState {
+    /// Returns true if the object is dead.
     fn is_dead(&self) -> bool {
         self.mortality()
-            .map(|mortality| *mortality == Mortality::Dead)
+            .map(|mortality| matches!(mortality, Mortality::Dead))
             .unwrap_or(false)
     }
 
+    /// Returns the current [Mortality] state.
+    fn mortality(&self) -> Option<&Mortality>;
+
+    /// Invoked when the [Mortality] state has changed.
+    fn mortality_changed(&mut self, change: MortalityChange);
+}
+
+/// Timed event when an object's [Mortality] has changed.
+#[derive(Debug)]
+pub struct MortalityChange(GameTime, Mortality);
+
+impl MortalityChange {
+    pub fn time(&self) -> &GameTime {
+        &self.0
+    }
+
+    pub fn mortality(&self) -> &Mortality {
+        &self.1
+    }
+}
+
+impl MortalityState for Player {
     fn mortality(&self) -> Option<&Mortality> {
-        self.mortality.iter().last().map(|change| &change.1)
+        self.mortality
+            .iter()
+            .last()
+            .map(|change| change.mortality())
     }
 
     fn mortality_changed(&mut self, change: MortalityChange) {
         self.mortality.push(change);
     }
-}
-
-/// Represents whether a [Player] is alive.
-#[derive(Debug, PartialEq)]
-pub enum Mortality {
-    Alive,
-    Dead,
 }
 
 pub fn with_mortality_detection(state: &mut AnalyzerState, event: &AnalyzerEvent) {
@@ -54,9 +68,7 @@ pub fn with_mortality_detection(state: &mut AnalyzerState, event: &AnalyzerEvent
         let player = state.find_player_by_client_index_mut(client_index)?;
 
         if player.mortality() != Some(&mortality) {
-            player
-                .mortality
-                .push(MortalityChange(current_time, mortality));
+            player.mortality_changed(MortalityChange(current_time, mortality));
         }
 
         Some(())

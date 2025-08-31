@@ -37,41 +37,59 @@ pub trait MortalityState {
             .map(|change| change.mortality())
     }
 
-    fn avg_lifespan(&self) -> Duration {
+    fn lifespans(&self) -> Vec<Duration> {
         #[derive(Default)]
         struct State<'a> {
+            lifespans: Vec<Duration>,
             spawn_time: Option<&'a GameTime>,
-            total_lifespan: Duration,
-            num_spawns: usize,
         }
 
-        let agg_state = self
-            .mortality_changes()
+        self.mortality_changes()
             .fold(State::default(), |mut state, change| {
                 match change.mortality() {
                     Mortality::Alive => {
                         if state.spawn_time.is_none() {
                             state.spawn_time = Some(change.time());
-                            state.num_spawns += 1;
                         }
                     }
 
                     Mortality::Dead => {
                         if let Some(spawn_time) = state.spawn_time {
-                            state.total_lifespan += change.time() - spawn_time;
+                            state.lifespans.push(change.time() - spawn_time);
                             state.spawn_time = None;
                         };
                     }
                 };
 
                 state
-            });
+            })
+            .lifespans
+    }
 
-        if agg_state.total_lifespan.is_zero() || agg_state.num_spawns == 0 {
+    fn min_lifespan(&self) -> Duration {
+        let lifespans = self.lifespans();
+        let duration = lifespans.iter().min().unwrap_or(&Duration::ZERO);
+
+        *duration
+    }
+
+    fn max_lifespan(&self) -> Duration {
+        let lifespans = self.lifespans();
+        let duration = lifespans.iter().max().unwrap_or(&Duration::ZERO);
+
+        *duration
+    }
+
+    fn avg_lifespan(&self) -> Duration {
+        let lifespans = self.lifespans();
+        let num_spawns = lifespans.len();
+        let living_time: Duration = lifespans.iter().sum();
+
+        if living_time.is_zero() || num_spawns == 0 {
             return Duration::ZERO;
         }
 
-        agg_state.total_lifespan / agg_state.num_spawns as u32
+        living_time / num_spawns as u32
     }
 }
 
